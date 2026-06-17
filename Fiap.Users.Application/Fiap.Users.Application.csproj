@@ -7,7 +7,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Behaviors\" />
+    <Compile Remove="Behaviors\**" />
+    <EmbeddedResource Remove="Behaviors\**" />
+    <None Remove="Behaviors\**" />
   </ItemGroup>
 
   <ItemGroup>

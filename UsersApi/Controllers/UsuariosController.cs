@@ -1,4 +1,7 @@
-﻿using MediatR;
+﻿using Fiap.Users.Application.Commands.AtualizarUsuario;
+using Fiap.Users.Application.Commands.CriarUsuario;
+using Fiap.UsersApi.Domain.Contants;
+using MediatR;
 using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

@@ -7,12 +7,20 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Domain\**" />
+    <Content Remove="Domain\**" />
+    <EmbeddedResource Remove="Domain\**" />
+    <None Remove="Domain\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="MediatR" Version="14.1.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.5" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Domain\" />
+    <ProjectReference Include="..\Fiap.Users.Application\Fiap.Users.Application.csproj" />
+    <ProjectReference Include="..\Fiap.Users.Repository\Fiap.Users.Infra.csproj" />
   </ItemGroup>
 
 </Project>
