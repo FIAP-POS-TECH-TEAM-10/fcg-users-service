@@ -4,6 +4,9 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <EnableSdkContainerDebugging>True</EnableSdkContainerDebugging>
+    <ContainerBaseImage>mcr.microsoft.com/dotnet/aspnet:10.0</ContainerBaseImage>
+    <UserSecretsId>f7054777-c6c0-4a4a-8d83-b67ea0091687</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
@@ -26,6 +29,10 @@
   <ItemGroup>
     <ProjectReference Include="..\Fiap.Users.Application\Fiap.Users.Application.csproj" />
     <ProjectReference Include="..\Fiap.Users.Repository\Fiap.Users.Infra.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ContainerPort Include="8081" />
   </ItemGroup>
 
 </Project>
