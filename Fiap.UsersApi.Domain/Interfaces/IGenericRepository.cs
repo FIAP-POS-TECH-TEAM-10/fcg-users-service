@@ -3,7 +3,8 @@ using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Text;
 
-namespace Fiap.Users.Infra.DataProvider
+namespace Fiap.Users.Domain.Interfaces
+
 {
     public interface IGenericRepository<TEntity> where TEntity : class
     {

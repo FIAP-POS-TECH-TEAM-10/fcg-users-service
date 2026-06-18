@@ -1,5 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using MediatR;
+using Fiap.Users.Application;
 
 namespace Fiap.Users.Infra.IoC
 {
@@ -9,7 +9,7 @@ namespace Fiap.Users.Infra.IoC
         {
             var appAssembly = typeof(IAssemblyMarker).Assembly;
 
-            services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(appAssembly));
+            services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(appAssembly));
 
             return services;
         }

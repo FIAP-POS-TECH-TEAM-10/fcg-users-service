@@ -1,4 +1,5 @@
-﻿using Fiap.Users.Infra.Repositories;
+﻿using Fiap.Users.Domain.Interfaces;
+using Fiap.Users.Infra.Repositories;
 using System;
 using System.Collections.Generic;
 using System.Text;

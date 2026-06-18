@@ -1,12 +1,9 @@
-﻿using Fiap.Users.Infra.Repositories;
+﻿using Fiap.Users.Domain.Interfaces;
 using Fiap.UsersApi.Domain.Aggregates;
 using Fiap.UsersApi.Domain.Exceptions;
 using MediatR;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
-namespace Fiap.Users.Application.Queries
+namespace Fiap.Users.Application.Queries.BuscarUsuarioPorId
 {
     public class BuscarUsuarioPorIdQueryHandler : IRequestHandler<BuscarUsuarioPorIdQuery, DetalhesUsuarioDto>
     {

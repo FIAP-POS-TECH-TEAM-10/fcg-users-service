@@ -1,6 +1,11 @@
 ﻿using Fiap.Users.Application.Commands.AtualizarUsuario;
 using Fiap.Users.Application.Commands.CriarUsuario;
+using Fiap.Users.Application.Commands.Login;
+using Fiap.Users.Application.Queries;
+using Fiap.Users.Application.Queries.BuscarUsuarioPorId;
+using Fiap.Users.Application.Queries.ListarUsuarios;
 using Fiap.UsersApi.Domain.Contants;
+using Fiap.UsersApi.Domain.Exceptions;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.AspNetCore.Authorization;
@@ -18,7 +23,7 @@ public class UsuariosController: ApiControllerBase<UsuariosController>
     }
 
     [HttpPost]
-    [Authorize]
+   // [Authorize]
     public async Task<IActionResult> CriarAsync([FromBody] CriarUsuarioCommand command)
     {
         var result = await _sender.Send(command);
@@ -26,7 +31,7 @@ public class UsuariosController: ApiControllerBase<UsuariosController>
     }
 
     [HttpPut]
-    [Authorize(Policy = AuthConstants.AdminPolicy)]
+    //[Authorize(Policy = AuthConstants.AdminPolicy)]
     public async Task<IActionResult> AtualizarAsync([FromBody] AtualizarUsuarioCommand command)
     {
         var result = await _sender.Send(command);
@@ -34,7 +39,7 @@ public class UsuariosController: ApiControllerBase<UsuariosController>
     }
 
     [HttpGet]
-    [Authorize(Policy = AuthConstants.AdminPolicy)]
+    //[Authorize(Policy = AuthConstants.AdminPolicy)]
     public async Task<IActionResult> ListarTodos()
     {
         var result = await _sender.Send(new ListarUsuariosQuery());
@@ -45,7 +50,7 @@ public class UsuariosController: ApiControllerBase<UsuariosController>
     }
 
     [HttpGet("{id}")]
-    [Authorize(Policy = AuthConstants.AdminPolicy)]
+    //[Authorize(Policy = AuthConstants.AdminPolicy)]
     public async Task<IActionResult> BuscarPorId(Guid id)
     {
         var result = await _sender.Send(new BuscarUsuarioPorIdQuery(id));
@@ -53,5 +58,21 @@ public class UsuariosController: ApiControllerBase<UsuariosController>
         if (result == null)
             return NotFound();
         return Ok(result);
+    }
+
+    [HttpPost("/login")]
+    public async Task<IActionResult> LoginAsync([FromBody] LoginCommand command)
+    {
+        try
+        {
+            var result = await _sender.Send(command);
+            _logger.LogInformation("Login realizado com sucesso para usuario {Usuario}", command.Usuario);
+            return Ok(result);
+        }
+        catch (LoginException ex)
+        {
+            _logger.LogError(ex, "Erro ao realizar login para usuario {Usuario}", command.Usuario);
+            return StatusCode(ex.StatusCode, ex.Message);
+        }
     }
 }

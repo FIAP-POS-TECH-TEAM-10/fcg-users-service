@@ -1,6 +1,6 @@
 <Solution>
   <Project Path="Fiap.Users.Application/Fiap.Users.Application.csproj" Id="1cc42ace-6c2a-4242-8d34-da4f6ad7d8a8" />
   <Project Path="Fiap.Users.Repository/Fiap.Users.Infra.csproj" Id="f0cff591-342f-4107-a916-95140b8d655e" />
-  <Project Path="Fiap.UsersApi.Domain/Fiap.UsersApi.Domain.csproj" Id="f55ec7c9-9fd3-4f58-8082-1dfcd33b6670" />
+  <Project Path="Fiap.UsersApi.Domain/Fiap.Users.Domain.csproj" Id="f55ec7c9-9fd3-4f58-8082-1dfcd33b6670" />
   <Project Path="UsersApi/UsersApi.csproj" />
 </Solution>

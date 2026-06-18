@@ -1,4 +1,4 @@
-﻿namespace Fiap.Users.Infra.IoC
+﻿namespace Fiap.Users.Application
 {
     public interface IAssemblyMarker
     {

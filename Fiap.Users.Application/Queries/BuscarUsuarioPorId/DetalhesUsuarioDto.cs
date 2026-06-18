@@ -1,6 +1,6 @@
 ﻿using Fiap.UsersApi.Domain.Aggregates;
 
-namespace Fiap.Users.Application.Queries
+namespace Fiap.Users.Application.Queries.BuscarUsuarioPorId
 {
     public class DetalhesUsuarioDto
     {

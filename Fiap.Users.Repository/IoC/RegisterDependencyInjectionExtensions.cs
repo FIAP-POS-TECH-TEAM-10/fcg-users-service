@@ -1,7 +1,10 @@
-﻿using Fiap.Users.Infra.DataProvider;
+﻿using Fiap.Users.Domain.Interfaces;
+using Fiap.Users.Infra.DataProvider;
 using Fiap.Users.Infra.Repositories;
 using Fiap.Users.Infra.Services;
 using Fiap.UsersApi.Domain.Services;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
@@ -11,8 +14,10 @@ namespace Fiap.Users.Infra.IoC
 {
     public static class RegisterDependencyInjectionExtensions
     {
-        public static void RegisterDI(this IServiceCollection services)
+        public static void RegisterDI(this IServiceCollection services,IConfiguration configuration)
         {
+            services.AddDbContext<FcGamesContexto>(options =>
+            options.UseSqlite(configuration.GetConnectionString("DefaultConnection")));
             // Repositories
             services.AddScoped<IUsuarioRepository, UsuarioRepository>();
            

@@ -1,10 +1,8 @@
-﻿using Fiap.Users.Infra.Repositories;
+﻿using Fiap.Users.Domain.Interfaces;
 using Fiap.UsersApi.Domain.Exceptions;
 using Fiap.UsersApi.Domain.Services;
 using MediatR;
-using System;
-using System.Collections.Generic;
-using System.Text;
+
 
 namespace Fiap.Users.Application.Commands.Login
 {

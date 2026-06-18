@@ -17,8 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Fiap.Users.Repository\Fiap.Users.Infra.csproj" />
-    <ProjectReference Include="..\Fiap.UsersApi.Domain\Fiap.UsersApi.Domain.csproj" />
+    <ProjectReference Include="..\Fiap.UsersApi.Domain\Fiap.Users.Domain.csproj" />
   </ItemGroup>
 
 </Project>

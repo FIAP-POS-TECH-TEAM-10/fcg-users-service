@@ -1,11 +1,8 @@
-﻿using Fiap.Users.Infra.DataProvider;
+﻿using Fiap.Users.Domain.Interfaces;
 using Fiap.UsersApi.Domain.Aggregates;
 using Fiap.UsersApi.Domain.Exceptions;
 using Fiap.UsersApi.Domain.Services;
 using MediatR;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace Fiap.Users.Application.Commands.AtualizarUsuario
 {

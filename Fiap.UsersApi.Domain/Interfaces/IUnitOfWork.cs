@@ -1,9 +1,5 @@
-﻿using Fiap.Users.Infra.Repositories;
-using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace Fiap.Users.Infra.DataProvider
+﻿
+namespace Fiap.Users.Domain.Interfaces
 {
     public interface IUnitOfWork
     {

@@ -10,13 +10,18 @@
     <PackageReference Include="MediatR" Version="14.1.0" />
     <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="10.0.9" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.9" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.9">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
 	  <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.7" />
 	  <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.17.0" />
 	  <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.17.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Fiap.UsersApi.Domain\Fiap.UsersApi.Domain.csproj" />
+    <ProjectReference Include="..\Fiap.Users.Application\Fiap.Users.Application.csproj" />
+    <ProjectReference Include="..\Fiap.UsersApi.Domain\Fiap.Users.Domain.csproj" />
   </ItemGroup>
 
 </Project>
