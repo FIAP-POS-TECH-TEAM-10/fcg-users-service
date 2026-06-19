@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="Fiap.FCGames.Users.Api/Fiap.FCGames.Users.Api.csproj" />
+  <Project Path="Fiap.FCGames.Users.Application/Fiap.FCGames.Users.Application.csproj" />
+  <Project Path="Fiap.FCGames.Users.CrossCutting/Fiap.FCGames.Users.CrossCutting.csproj" />
+  <Project Path="Fiap.FCGames.Users.Domain/Fiap.FCGames.Users.Domain.csproj" />
+  <Project Path="Fiap.FCGames.Users.Infra/Fiap.FCGames.Users.Infra.csproj" />
+</Solution>
