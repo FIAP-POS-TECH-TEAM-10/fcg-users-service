@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: users-api
-        image: fcg-users-api:latest
+        image: fcg-users-service:latest
         imagePullPolicy: Never
         ports:
         - containerPort: 5001
