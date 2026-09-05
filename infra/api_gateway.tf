@@ -44,6 +44,38 @@ output "api_gateway_url" {
   value       = aws_apigatewayv2_api.http_api.api_endpoint
 }
 
+# 1. Role do IAM para o serviço do API Gateway conseguir escrever no CloudWatch
+resource "aws_iam_role" "api_gateway_cloudwatch_role" {
+  name = "${var.service_name}-apigw-cw-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "apigateway.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+# 2. Anexa a política gerenciada da AWS para gravação de logs
+resource "aws_iam_role_policy_attachment" "api_gateway_cloudwatch_policy" {
+  role       = aws_iam_role.api_gateway_cloudwatch_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+}
+
+# 3. Associa a Role criada às configurações globais do API Gateway da conta na região
+resource "aws_api_gateway_account" "account" {
+  cloudwatch_role_arn = aws_iam_role.api_gateway_cloudwatch_role.arn
+
+  depends_on = [aws_iam_role_policy_attachment.api_gateway_cloudwatch_policy]
+}
+
+
 # 1. Log Group no CloudWatch para armazenar os Access Logs do API Gateway
 resource "aws_cloudwatch_log_group" "api_gw_logs" {
   name              = "/aws/vendedlogs/apigateway/${var.service_name}-api-gateway"
