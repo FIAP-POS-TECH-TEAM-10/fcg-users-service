@@ -1,14 +1,21 @@
 name: Infrastructure and App Deploy (Main)
 
 on:
-
-  pull_request:
-    branches:
-      - main
-    types: [opened, synchronize, reopened]
+  # Executa após o sucesso do workflow de Terraform Plan (nas branches de feature/PR)
+  workflow_run:
+    workflows: ["Terraform Plan (PR Develop)"]
+    types:
+      - completed
+  
+  # Executa no push/merge para a branch main
   push:
     branches:
       - main
+
+# Evita execuções concorrentes na mesma branch/PR. Se houver um novo push, cancela a execução em andamento.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref || github.event.workflow_run.head_branch }}
+  cancel-in-progress: true
 
 permissions:
   id-token: write # Necessário para autenticação via OIDC na AWS
@@ -25,13 +32,18 @@ env:
   WORKING_DIR: ./infra
 
 jobs:
-  # --- ETAPA 1: INFRAESTRUTURA & ECR (APENAS SE O PR FOR MERGED OU PUSH DIRETO) ---
+  # --- ETAPA 1: INFRAESTRUTURA & ECR ---
   infra-and-build:
-    name: Provision Infrastructure & Push to ECR    
+    name: Provision Infrastructure & Push to ECR
+    # Garante que só roda se o acionamento via workflow_run tiver sido concluído com SUCESSO (ou se for push direto na main)
+    if: ${{ github.event_name == 'push' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          # Se o gatilho for workflow_run, garante o checkout do commit exato que disparou o evento
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Configure AWS Credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
@@ -62,7 +74,7 @@ jobs:
         id: build-image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
+          IMAGE_TAG: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: |
           # Cria um arquivo temporário contendo o token para o Docker montar com segurança
           echo "${{ secrets.PAT_PACKAGES || secrets.GITHUB_TOKEN }}" > secret_token.txt
@@ -78,7 +90,7 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-  # # --- ETAPA 2: DEPLOY NO ECS ---
+  # --- ETAPA 2: DEPLOY NO ECS (Descomente quando for habilitar o deploy automático) ---
   # deploy-ecs:
   #   name: Deploy Service to ECS
   #   needs: infra-and-build
@@ -86,25 +98,27 @@ jobs:
   #   steps:
   #     - name: Checkout Repository
   #       uses: actions/checkout@v4
-
+  #       with:
+  #         ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+  #
   #     - name: Configure AWS Credentials via OIDC
   #       uses: aws-actions/configure-aws-credentials@v4
   #       with:
   #         role-to-assume: ${{ env.ROLE_TO_ASSUME }}
   #         aws-region: ${{ env.AWS_REGION }}
-
+  #
   #     - name: Log in to Amazon ECR
   #       id: login-ecr
   #       uses: aws-actions/amazon-ecr-login@v2
-
+  #
   #     - name: Render ECS Task Definition
   #       id: task-def
   #       uses: aws-actions/amazon-ecs-render-task-definition@v1
   #       with:
   #         task-definition: .aws/task-definition.json
   #         container-name: ${{ env.CONTAINER_NAME }}
-  #         image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
-
+  #         image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.event.workflow_run.head_sha || github.sha }}
+  #
   #     - name: Deploy Amazon ECS Task Definition
   #       uses: aws-actions/amazon-ecs-deploy-task-definition@v2
   #       with:

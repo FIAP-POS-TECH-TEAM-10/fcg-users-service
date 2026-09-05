@@ -3,9 +3,9 @@ name: Terraform Plan (PR Develop)
 on:
   push:
     branches:
-      - feature*     
-    paths:
-      - '*/**' # Monitora alterações
+      - 'feature*'
+      - 'feature/**'     
+      - 'feature-**'     
 
 permissions:
   id-token: write
