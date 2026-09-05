@@ -75,11 +75,33 @@ resource "aws_api_gateway_account" "account" {
   depends_on = [aws_iam_role_policy_attachment.api_gateway_cloudwatch_policy]
 }
 
+# 3. Política de Recurso que concede permissão EXPLÍCITA ao CloudWatch para o API Gateway
+resource "aws_cloudwatch_log_resource_policy" "api_gw_logging_policy" {
+  policy_name = "${var.service_name}-apigw-cw-policy"
+
+  policy_document = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "apigateway.amazonaws.com"
+        }
+        Action = [
+          "logs:CreateLogStream",
+          "logs:ConfigureLogDelivery",
+          "logs:PutLogEvents"
+        ]
+        Resource = "${aws_cloudwatch_log_group.api_gw_logs.arn}:*"
+      }
+    ]
+  })
+}
 
 # 1. Log Group no CloudWatch para armazenar os Access Logs do API Gateway
 resource "aws_cloudwatch_log_group" "api_gw_logs" {
-  name              = "/aws/vendedlogs/apigateway/${var.service_name}-api-gateway"
-  retention_in_days = 7 # Guarda os logs por 7 dias (economiza espaço e custos)
+  name              = "/aws/apigateway/${var.service_name}-api-gateway"
+  retention_in_days = 7
 }
 
 # 2. Atualização do Stage $default com Access Logs habilitados
@@ -90,7 +112,8 @@ resource "aws_apigatewayv2_stage" "default_stage" {
   auto_deploy = true
 
   access_log_settings {
-    destination_arn = aws_cloudwatch_log_group.api_gw_logs.arn
+    # ATENÇÃO: Adicionado o ":*" ao final do ARN para liberar a criação das Streams de log
+    destination_arn = "${aws_cloudwatch_log_group.api_gw_logs.arn}:*"
 
     format = jsonencode({
       requestId               = "$context.requestId"
@@ -107,8 +130,8 @@ resource "aws_apigatewayv2_stage" "default_stage" {
     })
   }
 
-  # Força o Terraform a aguardar a propagação da Role na conta antes de criar o Stage
   depends_on = [
-    aws_api_gateway_account.account
+    aws_api_gateway_account.account,
+    aws_cloudwatch_log_resource_policy.api_gw_logging_policy
   ]
 }
