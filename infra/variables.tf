@@ -6,7 +6,7 @@ variable "aws_region" {
 
 variable "service_name" {
   type    = string
-  default = "fcg-catalog-users"
+  default = "fcg-users-service"
 }
 
 variable "app_port" {
