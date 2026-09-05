@@ -1,0 +1,85 @@
+# 1. Definição da HTTP API (v2) - Ideal para Free Tier
+resource "aws_apigatewayv2_api" "http_api" {
+  name          = "${var.service_name}-api-gateway"
+  protocol_type = "HTTP"
+  description   = "API Gateway para o serviço de Catalogo FCGames"
+}
+
+# Captura o DNS Público do servidor EC2 rodando o ECS
+data "aws_instances" "ecs_instances" {
+  instance_tags = {
+    Name = "${var.service_name}-ecs-host"
+  }
+
+  instance_state_names = ["running"]
+  depends_on           = [aws_autoscaling_group.ecs_asg]
+}
+
+# 2. Integração do API Gateway com o IP público/DNS da sua EC2 do ECS
+# O API Gateway fará o proxy das chamadas HTTPS diretamente para a sua porta 5001
+resource "aws_apigatewayv2_integration" "ecs_integration" {
+  api_id             = aws_apigatewayv2_api.http_api.id
+  integration_type   = "HTTP_PROXY"
+  integration_uri    = "http://${data.aws_instances.ecs_instances.public_ips[0]}:5001"
+  integration_method = "ANY"
+}
+
+# 3. Rota Coringa ({proxy+}) para repassar todos os endpoints (/swagger, /api/v1/...) para o ECS
+resource "aws_apigatewayv2_route" "default_route" {
+  api_id    = aws_apigatewayv2_api.http_api.id
+  route_key = "ANY /{proxy+}"
+  target    = "integrations/${aws_apigatewayv2_integration.ecs_integration.id}"
+}
+
+# Rota para a raiz (/)
+resource "aws_apigatewayv2_route" "root_route" {
+  api_id    = aws_apigatewayv2_api.http_api.id
+  route_key = "ANY /"
+  target    = "integrations/${aws_apigatewayv2_integration.ecs_integration.id}"
+}
+
+# 4. Estágio Padrão ($default) com auto-deploy ativado
+resource "aws_apigatewayv2_stage" "default_stage" {
+  api_id      = aws_apigatewayv2_api.http_api.id
+  name        = "$default"
+  auto_deploy = true
+}
+
+# Output para exibir a URL final gerada pelo API Gateway
+output "api_gateway_url" {
+  description = "URL HTTPS pública gerada pelo API Gateway (Free Tier)"
+  value       = aws_apigatewayv2_api.http_api.api_endpoint
+}
+
+# 1. Log Group no CloudWatch para armazenar os Access Logs do API Gateway
+resource "aws_cloudwatch_log_group" "api_gw_logs" {
+  name              = "/aws/vendedlogs/apigateway/${var.service_name}-api-gateway"
+  retention_in_days = 7 # Guarda os logs por 7 dias (economiza espaço e custos)
+}
+
+# 2. Atualização do Stage $default com Access Logs habilitados
+resource "aws_apigatewayv2_stage" "default_stage" {
+  api_id      = aws_apigatewayv2_api.http_api.id
+  name        = "$default"
+  auto_deploy = true
+
+  # Habilita o envio de logs detalhados para o CloudWatch
+  access_log_settings {
+    destination_arn = aws_cloudwatch_log_group.api_gw_logs.arn
+
+    # Formato JSON estruturado das requisições (método, rota, status HTTP, tempo de resposta, IP de origem)
+    format = jsonencode({
+      requestId               = "$context.requestId"
+      ip                      = "$context.identity.sourceIp"
+      requestTime             = "$context.requestTime"
+      httpMethod              = "$context.httpMethod"
+      routeKey                = "$context.routeKey"
+      status                  = "$context.status"
+      protocol                = "$context.protocol"
+      responseLength          = "$context.responseLength"
+      integrationErrorMessage = "$context.integrationErrorMessage"
+      integrationStatus       = "$context.integrationStatus"
+      latency                 = "$context.responseLatency"
+    })
+  }
+}
