@@ -1,11 +1,11 @@
 name: Infrastructure and App Deploy (Main)
 
 on:
-  # Executa após o sucesso do workflow de Terraform Plan (nas branches de feature/PR)
-  workflow_run:
-    workflows: ["Terraform Plan (PR Develop)"]
-    types:
-      - completed
+  # # Executa após o sucesso do workflow de Terraform Plan (nas branches de feature/PR)
+  # workflow_run:
+  #   workflows: ["Terraform Plan (PR Develop)"]
+  #   types:
+  #     - completed
 
   # Executa no pr para a branch main
   pull_request:
