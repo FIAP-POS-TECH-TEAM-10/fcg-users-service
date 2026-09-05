@@ -199,6 +199,8 @@ resource "aws_ecs_service" "main" {
   launch_type     = "EC2"
 
   lifecycle {
-    ignore_changes = [task_definition]
-  }
+    ignore_changes = [
+      task_definition # Garante que o Terraform nao reverta as revisoes criadas pelo GitHub Actions
+    ]
+  }  
 }

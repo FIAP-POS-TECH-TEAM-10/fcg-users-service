@@ -18,7 +18,7 @@ builder.Services.RegisterSwaggerGenerator();
 builder.Services.AddAutenticacaoApi(builder.Configuration);
 builder.Services.AddAutorizacaoApi();
 builder.Services.AddContextDatabase(builder.Configuration);
-builder.Services.AddMassTransitRabbitMq(builder.Configuration);
+//builder.Services.AddMassTransitRabbitMq(builder.Configuration);
 builder.Services.AddHealthChecks();
 
 Log.Logger = new LoggerConfiguration()
