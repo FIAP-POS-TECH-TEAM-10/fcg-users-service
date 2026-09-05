@@ -6,11 +6,14 @@ on:
     workflows: ["Terraform Plan (PR Develop)"]
     types:
       - completed
-  
-  # Executa no push/merge para a branch main
-  push:
+
+  # Executa no pr para a branch main
+  pull_request:
     branches:
       - main
+    types: [opened, synchronize, reopened]     
+  
+
 
 # Evita execuções concorrentes na mesma branch/PR. Se houver um novo push, cancela a execução em andamento.
 concurrency:
