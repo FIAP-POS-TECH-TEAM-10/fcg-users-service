@@ -83,16 +83,15 @@ resource "aws_cloudwatch_log_group" "api_gw_logs" {
 }
 
 # 2. Atualização do Stage $default com Access Logs habilitados
+# Estágio Padrão ($default) com logs ativados
 resource "aws_apigatewayv2_stage" "default_stage" {
   api_id      = aws_apigatewayv2_api.http_api.id
   name        = "$default"
   auto_deploy = true
 
-  # Habilita o envio de logs detalhados para o CloudWatch
   access_log_settings {
     destination_arn = aws_cloudwatch_log_group.api_gw_logs.arn
 
-    # Formato JSON estruturado das requisições (método, rota, status HTTP, tempo de resposta, IP de origem)
     format = jsonencode({
       requestId               = "$context.requestId"
       ip                      = "$context.identity.sourceIp"
@@ -107,4 +106,9 @@ resource "aws_apigatewayv2_stage" "default_stage" {
       latency                 = "$context.responseLatency"
     })
   }
+
+  # Força o Terraform a aguardar a propagação da Role na conta antes de criar o Stage
+  depends_on = [
+    aws_api_gateway_account.account
+  ]
 }
