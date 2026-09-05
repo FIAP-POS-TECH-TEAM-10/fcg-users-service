@@ -1,22 +1,39 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-ARG NUGET_AUTH_TOKEN
-ENV NUGET_AUTH_TOKEN=$NUGET_AUTH_TOKEN
+# Recebe o token enviado pelo GitHub Actions durante o build
+ARG GITHUB_TOKEN
+
+# Configura as variáveis de ambiente que o nuget.config utiliza
+ENV NUGET_AUTH_TOKEN=${GITHUB_TOKEN}
+
+# ARG NUGET_AUTH_TOKEN
+# ENV NUGET_AUTH_TOKEN=$NUGET_AUTH_TOKEN
 
 COPY nuget.config .
 COPY app/src/ app/src/
 
 WORKDIR /src/app/src
-RUN dotnet restore Fiap.FCGames.Users.Api/Fiap.FCGames.Users.Api.csproj
+# RUN dotnet restore Fiap.FCGames.Users.Api/Fiap.FCGames.Users.Api.csproj
 
-RUN dotnet publish Fiap.FCGames.Users.Api/Fiap.FCGames.Users.Api.csproj \
-    -c Release \
-    -o /app/publish \
-    --no-restore
+# Utiliza o secret montado dinamicamente para autenticar o restore sem expor o token
+RUN --mount=type=secret,id=GITHUB_TOKEN \
+    export NUGET_AUTH_TOKEN=$(cat /run/secrets/GITHUB_TOKEN) && \
+    dotnet restore Fiap.FCGames.Users.Api/Fiap.FCGames.Users.Api.csproj    
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
-WORKDIR /app
+# RUN dotnet publish Fiap.FCGames.Users.Api/Fiap.FCGames.Users.Api.csproj \
+#     -c Release \
+#     -o /app/publish \
+#     --no-restore
+
+# Compila e publica a aplicação
+RUN --mount=type=secret,id=GITHUB_TOKEN \
+    export NUGET_AUTH_TOKEN=$(cat /run/secrets/GITHUB_TOKEN) && \
+    dotnet publish Fiap.FCGames.Users.Api/Fiap.FCGames.Users.Api.csproj -c Release -o /app/publish /p:UseAppHost=false    
+
+
+# FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+# WORKDIR /app
 
 # curl é necessário para o HEALTHCHECK do docker-compose / k8s (não vem na imagem aspnet).
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
