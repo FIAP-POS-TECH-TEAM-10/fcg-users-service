@@ -41,8 +41,14 @@ resource "aws_security_group" "ecs_sg" {
 }
 
 # ------------------------------------------------------------------------------
-# 2. ROLES IAM DO ECS E DA INSTÂNCIA EC2
+# 2. CLOUDWATCH LOGS & PERMISSÕES IAM DO ECS
 # ------------------------------------------------------------------------------
+
+# Grupo de logs para capturar stdout/stderr das tasks do ECS
+resource "aws_cloudwatch_log_group" "ecs_logs" {
+  name              = "/ecs/${var.service_name}"
+  retention_in_days = 7
+}
 
 resource "aws_iam_role" "ecs_instance_role" {
   name = "${var.service_name}-ecs-instance-role"
@@ -57,9 +63,16 @@ resource "aws_iam_role" "ecs_instance_role" {
   })
 }
 
+# Política padrão do ECS Agent
 resource "aws_iam_role_policy_attachment" "ecs_instance_role_policy" {
   role       = aws_iam_role.ecs_instance_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
+}
+
+# Permite que a instância EC2 crie e envie streams para o CloudWatch Logs
+resource "aws_iam_role_policy_attachment" "ecs_cloudwatch_policy" {
+  role       = aws_iam_role.ecs_instance_role.name
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
 }
 
 resource "aws_iam_instance_profile" "ecs_instance_profile" {
@@ -71,7 +84,7 @@ resource "aws_iam_instance_profile" "ecs_instance_profile" {
 # 3. CLUSTER ECS + LAUNCH TEMPLATE + AUTO SCALING GROUP
 # ------------------------------------------------------------------------------
 
-# Cluster ECS habilitado
+# Cluster ECS
 resource "aws_ecs_cluster" "main" {
   name = var.cluster_name
 }
@@ -129,7 +142,7 @@ resource "aws_autoscaling_group" "ecs_asg" {
   }
 }
 
-# Task Definition inicial gerenciada pelo Terraform
+# Task Definition configurada com o driver 'awslogs'
 resource "aws_ecs_task_definition" "app" {
   family                   = "${var.service_name}-task"
   network_mode             = "bridge"
@@ -151,6 +164,14 @@ resource "aws_ecs_task_definition" "app" {
           protocol      = "tcp"
         }
       ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.ecs_logs.name
+          "awslogs-region"        = var.aws_region
+          "awslogs-stream-prefix" = "ecs"
+        }
+      }
     }
   ])
 }
