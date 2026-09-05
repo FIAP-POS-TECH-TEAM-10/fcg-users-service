@@ -68,6 +68,7 @@ jobs:
           echo "${{ secrets.PAT_PACKAGES || secrets.GITHUB_TOKEN }}" > secret_token.txt
 
           docker build \
+            --platform linux/amd64 \
             --secret id=GITHUB_TOKEN,src=secret_token.txt \
             -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
             -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
