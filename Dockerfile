@@ -1,7 +1,7 @@
 # ------------------------------------------------------------------------------
 # Estágio 1: Build & Publish (Utiliza a imagem do SDK)
 # ------------------------------------------------------------------------------
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Recebe o token enviado pelo GitHub Actions durante o build
@@ -24,7 +24,7 @@ RUN --mount=type=secret,id=GITHUB_TOKEN \
 # ------------------------------------------------------------------------------
 # Estágio 2: Runtime (Imagem leve para execução no ECS)
 # ------------------------------------------------------------------------------
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
 USER root

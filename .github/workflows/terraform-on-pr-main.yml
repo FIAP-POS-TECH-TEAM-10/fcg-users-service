@@ -15,10 +15,10 @@ on:
   
 
 
-# Evita execuções concorrentes na mesma branch/PR. Se houver um novo push, cancela a execução em andamento.
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref || github.event.workflow_run.head_branch }}
-  cancel-in-progress: true
+# # Evita execuções concorrentes na mesma branch/PR. Se houver um novo push, cancela a execução em andamento.
+# concurrency:
+#   group: ${{ github.workflow }}-${{ github.ref || github.event.workflow_run.head_branch }}
+#   cancel-in-progress: true
 
 permissions:
   id-token: write # Necessário para autenticação via OIDC na AWS
