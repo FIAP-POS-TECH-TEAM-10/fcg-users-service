@@ -1,6 +1,7 @@
 using Fiap.FCGames.Users.CrossCutting.Extensions;
 using Fiap.FCGames.Users.CrossCutting.Middleware;
 using Fiap.FCGames.Users.Infra.DataProvider.Contexto;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 
@@ -17,7 +18,7 @@ builder.Services.RegisterSwaggerGenerator();
 builder.Services.AddAutenticacaoApi(builder.Configuration);
 builder.Services.AddAutorizacaoApi();
 builder.Services.AddContextDatabase(builder.Configuration);
-builder.Services.AddMassTransitRabbitMq(builder.Configuration);
+//builder.Services.AddMassTransitRabbitMq(builder.Configuration);
 builder.Services.AddHealthChecks();
 
 Log.Logger = new LoggerConfiguration()
@@ -58,7 +59,7 @@ app.MapHealthChecks("/health/live", new HealthCheckOptions
     Predicate = check => check.Tags.Contains("live")
 });
 
-Log.Information("FCGames UsersAPI iniciada em {Urls}", string.Join(", ", app.Urls.DefaultIfEmpty("http://localhost:5000")));
+Log.Information("FCGames UsersAPI iniciada em {Urls}", string.Join(", ", app.Urls.DefaultIfEmpty("http://localhost:5001")));
 
 app.Run();
 

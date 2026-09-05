@@ -12,7 +12,6 @@ Microsserviço responsável pelo cadastro, autenticação e gestão de usuários
 - Serilog (logs JSON estruturados)
 - JWT Bearer
 
-
 ## Endpoints
 
 | Método | Rota | Auth | Descrição |
