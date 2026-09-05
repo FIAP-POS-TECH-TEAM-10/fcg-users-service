@@ -12,13 +12,12 @@ data "aws_subnets" "default" {
   }
 }
 
-# Security Group liberando a porta da aplicação e SSH (opcional)
+# Security Group liberando a porta da aplicação e HTTP
 resource "aws_security_group" "ecs_sg" {
   name        = "${var.service_name}-ecs-sg"
   description = "Permite trafego de entrada para o container ECS"
   vpc_id      = data.aws_vpc.default.id
 
-  # Libera a porta da aplicação para o mundo (Estudos)
   ingress {
     from_port   = var.app_port
     to_port     = var.app_port
@@ -26,7 +25,6 @@ resource "aws_security_group" "ecs_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Libera porta HTTP padrao
   ingress {
     from_port   = 80
     to_port     = 80
@@ -34,7 +32,6 @@ resource "aws_security_group" "ecs_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Tráfego de saída ilimitado
   egress {
     from_port   = 0
     to_port     = 0
@@ -47,7 +44,6 @@ resource "aws_security_group" "ecs_sg" {
 # 2. ROLES IAM DO ECS E DA INSTÂNCIA EC2
 # ------------------------------------------------------------------------------
 
-# Permite que a instância EC2 se comunique com o ECS Control Plane
 resource "aws_iam_role" "ecs_instance_role" {
   name = "${var.service_name}-ecs-instance-role"
 
@@ -72,13 +68,15 @@ resource "aws_iam_instance_profile" "ecs_instance_profile" {
 }
 
 # ------------------------------------------------------------------------------
-# 3. CLUSTER ECS + LAUNCH TEMPLATE + AUTO SCALING GROUP (FREE TIER)
+# 3. CLUSTER ECS + LAUNCH TEMPLATE + AUTO SCALING GROUP
 # ------------------------------------------------------------------------------
-# resource "aws_ecs_cluster" "main" {
-#   name = var.cluster_name
-# }
 
-# Busca dinamicamente a AMI Amazon Linux 2023 ECS-Optimized mais recente da região
+# Cluster ECS habilitado
+resource "aws_ecs_cluster" "main" {
+  name = var.cluster_name
+}
+
+# Busca dinamicamente a AMI ECS-Optimized para x86_64
 data "aws_ami" "ecs_optimized" {
   most_recent = true
   owners      = ["amazon"]
@@ -89,11 +87,11 @@ data "aws_ami" "ecs_optimized" {
   }
 }
 
-# Template que inicializa a EC2 t2.micro configurada para o Cluster
+# Template que inicializa a EC2 configurada para o Cluster
 resource "aws_launch_template" "ecs_ec2_template" {
   name_prefix   = "${var.service_name}-template-"
-  image_id      = data.aws_ami.ecs_optimized.id # Usando a AMI obtida dinamicamente
-  instance_type = "t3.micro" # Ajustado de t2.micro para t3.micro (Free Tier em sa-east-1)
+  image_id      = data.aws_ami.ecs_optimized.id
+  instance_type = "t3.micro"
 
   iam_instance_profile {
     name = aws_iam_instance_profile.ecs_instance_profile.name
@@ -104,7 +102,6 @@ resource "aws_launch_template" "ecs_ec2_template" {
     security_groups             = [aws_security_group.ecs_sg.id]
   }
 
-  # Script de inicialização que vincula a instância ao Cluster recém-criado
   user_data = base64encode(<<-EOF
               #!/bin/bash
               echo "ECS_CLUSTER=${aws_ecs_cluster.main.name}" >> /etc/ecs/ecs.config
@@ -112,7 +109,7 @@ resource "aws_launch_template" "ecs_ec2_template" {
   )
 }
 
-# Auto Scaling Group que mantém exatamente 1 instância micro rodando de graça
+# Auto Scaling Group
 resource "aws_autoscaling_group" "ecs_asg" {
   name                = "${var.service_name}-asg"
   vpc_zone_identifier = data.aws_subnets.default.ids
@@ -132,26 +129,13 @@ resource "aws_autoscaling_group" "ecs_asg" {
   }
 }
 
-# Recurso para registrar e executar a Task no Cluster ECS
-resource "aws_ecs_service" "main" {
-  name            = var.service_name # Deve ser "fcg-catalog-service"
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.app.arn
-  desired_count   = 1
-  launch_type     = "EC2"
-
-  lifecycle {
-    ignore_changes = [task_definition] # Impede que o Terraform sobrescreva as revisões de imagem feitas pelo GitHub Actions
-  }
-}
-
 # Task Definition inicial gerenciada pelo Terraform
 resource "aws_ecs_task_definition" "app" {
-  family                = "${var.service_name}-task"
-  network_mode          = "bridge"
+  family                   = "${var.service_name}-task"
+  network_mode             = "bridge"
   requires_compatibilities = ["EC2"]
-  cpu                   = "256"
-  memory                = "256"
+  cpu                      = "256"
+  memory                   = "256"
 
   container_definitions = jsonencode([
     {
@@ -169,4 +153,17 @@ resource "aws_ecs_task_definition" "app" {
       ]
     }
   ])
+}
+
+# Recurso para registrar e executar a Task no Cluster ECS
+resource "aws_ecs_service" "main" {
+  name            = var.service_name
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.app.arn
+  desired_count   = 1
+  launch_type     = "EC2"
+
+  lifecycle {
+    ignore_changes = [task_definition]
+  }
 }
