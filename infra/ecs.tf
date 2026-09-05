@@ -74,9 +74,9 @@ resource "aws_iam_instance_profile" "ecs_instance_profile" {
 # ------------------------------------------------------------------------------
 # 3. CLUSTER ECS + LAUNCH TEMPLATE + AUTO SCALING GROUP (FREE TIER)
 # ------------------------------------------------------------------------------
-resource "aws_ecs_cluster" "main" {
-  name = var.cluster_name
-}
+# resource "aws_ecs_cluster" "main" {
+#   name = var.cluster_name
+# }
 
 # Busca dinamicamente a AMI Amazon Linux 2023 ECS-Optimized mais recente da região
 data "aws_ami" "ecs_optimized" {
