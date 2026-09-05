@@ -18,6 +18,14 @@ resource "aws_security_group" "ecs_sg" {
   description = "Permite trafego de entrada para o container ECS"
   vpc_id      = data.aws_vpc.default.id
 
+  # Libera portas dinâmicas alocadas pelo ECS no modo bridge (32768-61000)
+  ingress {
+    from_port   = 32768
+    to_port     = 61000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   ingress {
     from_port   = var.app_port
     to_port     = var.app_port
