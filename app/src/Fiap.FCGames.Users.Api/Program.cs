@@ -1,6 +1,7 @@
 using Fiap.FCGames.Users.CrossCutting.Extensions;
 using Fiap.FCGames.Users.CrossCutting.Middleware;
 using Fiap.FCGames.Users.Infra.DataProvider.Contexto;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 
@@ -51,12 +52,12 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-app.MapHealthChecks("/health/live");
+app.MapHealthChecks("/health");
 
-// app.MapHealthChecks("/health/live", new HealthCheckOptions
-// {
-//     Predicate = check => check.Tags.Contains("live")
-// });
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("live")
+});
 
 Log.Information("FCGames UsersAPI iniciada em {Urls}", string.Join(", ", app.Urls.DefaultIfEmpty("http://localhost:5000")));
 
