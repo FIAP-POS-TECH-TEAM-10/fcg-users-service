@@ -120,6 +120,7 @@ resource "aws_apigatewayv2_stage" "default_stage" {
       ip                      = "$context.identity.sourceIp"
       requestTime             = "$context.requestTime"
       httpMethod              = "$context.httpMethod"
+      path                    = "$context.path"       # Rota real chamada (ex: /swagger/index.html)      
       routeKey                = "$context.routeKey"
       status                  = "$context.status"
       protocol                = "$context.protocol"
