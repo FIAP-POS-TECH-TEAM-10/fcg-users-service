@@ -1,0 +1,71 @@
+name: Deploy on PR Merge to Main
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - closed # Dispara quando o PR é fechado
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: sa-east-1
+  ROLE_TO_ASSUME: arn:aws:iam::915153720516:role/GitHubActions-ECS-Deploy-Role
+  ECR_REPOSITORY: fcg-users-service
+  ECS_CLUSTER: fcg-cluster-fiap
+  ECS_SERVICE: fcg-users-service
+  CONTAINER_NAME: fcg-users-service-container
+  WORKING_DIR: ./infra # Apontado para a pasta infra
+
+jobs:
+# --- ETAPA 1: INFRAESTRUTURA & ECR (APENAS SE O PR FOR MERGED OU PUSH DIRETO) ---
+  # infra-and-build:
+  #   name: Provision Infrastructure & Push to ECR    
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout Repository
+  #       uses: actions/checkout@v4
+
+  #     - name: Configure AWS Credentials via OIDC
+  #       uses: aws-actions/configure-aws-credentials@v4
+  #       with:
+  #         role-to-assume: ${{ env.ROLE_TO_ASSUME }}
+  #         aws-region: ${{ env.AWS_REGION }}
+
+  # --- ETAPA 2: DEPLOY NO ECS ---
+  deploy-ecs:
+    name: Deploy Service to ECS
+    # needs: infra-and-build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Render ECS Task Definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: .aws/task-definition.json
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+
+      - name: Deploy Amazon ECS Task Definition
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true

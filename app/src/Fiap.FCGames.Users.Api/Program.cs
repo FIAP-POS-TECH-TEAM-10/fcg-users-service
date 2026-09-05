@@ -53,6 +53,11 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHealthChecks("/health");
 
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("live")
+});
+
 Log.Information("FCGames UsersAPI iniciada em {Urls}", string.Join(", ", app.Urls.DefaultIfEmpty("http://localhost:5000")));
 
 app.Run();
