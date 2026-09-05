@@ -28,9 +28,16 @@ RUN --mount=type=secret,id=GITHUB_TOKEN \
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
-# curl é necessário para o HEALTHCHECK do docker-compose / k8s (não vem na imagem aspnet).
-RUN apt-get update && apt-get install -y --no-install-recommends curl \
-    && rm -rf /var/lib/apt/lists/*
+# # curl é necessário para o HEALTHCHECK do docker-compose / k8s (não vem na imagem aspnet).
+# RUN apt-get update && apt-get install -y --no-install-recommends curl \
+#     && rm -rf /var/lib/apt/lists/*
+
+# Instala bibliotecas nativas de internacionalizacao e suporte a timezone
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    icu-devtools \
+    libicu-dev \
+    && rm -rf /var/lib/apt/lists/*    
 
 EXPOSE 5001
 

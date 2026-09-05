@@ -164,6 +164,12 @@ resource "aws_ecs_task_definition" "app" {
           protocol      = "tcp"
         }
       ]
+      # VARIÁVEIS DE AMBIENTE PARA DIAGNÓSTICO DO .NET NO LINUX
+      environment = [
+        { name = "ASPNETCORE_ENVIRONMENT", value = "Development" }, # Revela mais logs no startup
+        { name = "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT", value = "1" }, # Evita crash por falta de ICU/locales no Linux
+        { name = "DOTNET_USE_POLLING_FILE_WATCHER", value = "true" }
+      ]
       logConfiguration = {
         logDriver = "awslogs"
         options = {
