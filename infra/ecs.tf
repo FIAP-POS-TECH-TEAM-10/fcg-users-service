@@ -168,7 +168,7 @@ resource "aws_ecs_task_definition" "app" {
       portMappings = [
         {
           containerPort = 5001
-          hostPort      = 0
+          hostPort      = 5001
           protocol      = "tcp"
         }
       ]
