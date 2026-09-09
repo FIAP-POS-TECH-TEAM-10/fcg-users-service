@@ -2,7 +2,7 @@
 resource "aws_apigatewayv2_api" "http_api" {
   name          = "${var.service_name}-api-gateway"
   protocol_type = "HTTP"
-  description   = "API Gateway para o serviço de Catalogo FCGames"
+  description   = "API Gateway para o serviço de Catalogo FCGames"  
 }
 
 # Captura o DNS Público do servidor EC2 rodando o ECS
@@ -114,6 +114,8 @@ resource "aws_apigatewayv2_stage" "default_stage" {
   default_route_settings {
     logging_level            = "INFO"
     detailed_metrics_enabled = true
+    throttling_burst_limit   = 10000
+    throttling_rate_limit    = 20000
   }
 
   access_log_settings {
