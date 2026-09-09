@@ -40,12 +40,15 @@ if (!app.Environment.IsEnvironment("Testing"))
 
 app.UseCorrelationId();
 
-if (app.Environment.IsDevelopment())
-{
-    app.RegisterSwagger();
-    app.MapOpenApi();
-    app.RegisterScalar();
-}
+app.RegisterSwagger();
+app.MapOpenApi();
+
+// if (app.Environment.IsDevelopment())
+// {
+//     //app.RegisterSwagger();
+//     ///app.MapOpenApi();
+//     //app.RegisterScalar();
+// }
 
 app.UseErrorHandlingMiddleware();
 app.UseHttpsRedirection();
