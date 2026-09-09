@@ -111,6 +111,11 @@ resource "aws_apigatewayv2_stage" "default_stage" {
   name        = "$default"
   auto_deploy = true
 
+  default_route_settings {
+    logging_level            = "INFO"
+    detailed_metrics_enabled = true
+  }
+
   access_log_settings {
     # ATENÇÃO: Adicionado o ":*" ao final do ARN para liberar a criação das Streams de log
     destination_arn = "${aws_cloudwatch_log_group.api_gw_logs.arn}:*"
@@ -127,6 +132,9 @@ resource "aws_apigatewayv2_stage" "default_stage" {
       responseLength          = "$context.responseLength"
       integrationErrorMessage = "$context.integrationErrorMessage"
       integrationStatus       = "$context.integrationStatus"
+      integrationLatency      = "$context.integration.latency"
+      errorMessage            = "$context.error.message"
+      errorResponseType       = "$context.error.responseType"
       latency                 = "$context.responseLatency"
     })
   }
