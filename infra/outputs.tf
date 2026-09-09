@@ -17,3 +17,8 @@ output "ecs_security_group_id" {
   description = "ID do Security Group associado às instâncias do ECS"
   value       = aws_security_group.ecs_sg.id
 }
+
+output "api_gateway_url" {
+  description = "URL HTTPS pública gerada pelo API Gateway (Free Tier)"
+  value       = aws_apigatewayv2_api.http_api.api_endpoint
+}
