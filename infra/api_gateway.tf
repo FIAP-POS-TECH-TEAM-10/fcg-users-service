@@ -118,7 +118,7 @@ resource "aws_apigatewayv2_stage" "default_stage" {
 
   access_log_settings {
     # ATENÇÃO: Adicionado o ":*" ao final do ARN para liberar a criação das Streams de log
-    destination_arn = "${aws_cloudwatch_log_group.api_gw_logs.arn}:*"
+    destination_arn = aws_cloudwatch_log_group.api_gw_logs.arn
 
     format = jsonencode({
       requestId               = "$context.requestId"
@@ -139,8 +139,7 @@ resource "aws_apigatewayv2_stage" "default_stage" {
     })
   }
 
-  depends_on = [
-    aws_api_gateway_account.account,
+  depends_on = [    
     aws_cloudwatch_log_resource_policy.api_gw_logging_policy
   ]
 }
