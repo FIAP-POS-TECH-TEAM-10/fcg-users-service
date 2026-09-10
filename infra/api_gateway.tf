@@ -15,27 +15,44 @@ data "aws_instances" "ecs_instances" {
   depends_on           = [aws_autoscaling_group.ecs_asg]
 }
 
-# 2. Integração do API Gateway com o IP público/DNS da sua EC2 do ECS
-# O API Gateway fará o proxy das chamadas HTTPS diretamente para a sua porta 5001
+# 2. Integração do API Gateway com o IP público da EC2 do ECS.
+# `/{proxy}` no fim é obrigatório: sem isso a HTTP API repassa TODA requisição para a
+# raiz "/" do backend (todo endpoint vira 404). Com `{proxy}` ela injeta o caminho
+# capturado pela rota `ANY /{proxy+}` (ex.: /health, /usuarios, /scalar/v1).
 resource "aws_apigatewayv2_integration" "ecs_integration" {
-  api_id             = aws_apigatewayv2_api.http_api.id
-  integration_type   = "HTTP_PROXY"
-  integration_uri    = "http://${data.aws_instances.ecs_instances.public_ips[0]}:5001"
-  integration_method = "ANY"
+  api_id                 = aws_apigatewayv2_api.http_api.id
+  integration_type       = "HTTP_PROXY"
+  integration_uri        = "http://${data.aws_instances.ecs_instances.public_ips[0]}:5001/{proxy}"
+  integration_method     = "ANY"
+  payload_format_version = "1.0"
+
+  # A rota `ANY /` não tem a variável `proxy`; ela precisa ser repontada para a
+  # integração raiz ANTES de esta integração ganhar `/{proxy}`, senão a AWS
+  # rejeita a validação rota<->integração.
+  depends_on = [aws_apigatewayv2_route.root_route]
 }
 
-# 3. Rota Coringa ({proxy+}) para repassar todos os endpoints (/swagger, /api/v1/...) para o ECS
+# 3. Rota coringa: repassa todos os endpoints (/health, /usuarios, /scalar/v1, ...) para o ECS.
 resource "aws_apigatewayv2_route" "default_route" {
   api_id    = aws_apigatewayv2_api.http_api.id
   route_key = "ANY /{proxy+}"
   target    = "integrations/${aws_apigatewayv2_integration.ecs_integration.id}"
 }
 
-# Rota para a raiz (/)
+# Rota para a raiz "/" — usa a mesma integração, forçando o path "/" no backend
+# (não dá para reaproveitar a integração com `{proxy}` sem um valor para a variável).
+resource "aws_apigatewayv2_integration" "ecs_integration_root" {
+  api_id                 = aws_apigatewayv2_api.http_api.id
+  integration_type       = "HTTP_PROXY"
+  integration_uri        = "http://${data.aws_instances.ecs_instances.public_ips[0]}:5001/"
+  integration_method     = "ANY"
+  payload_format_version = "1.0"
+}
+
 resource "aws_apigatewayv2_route" "root_route" {
   api_id    = aws_apigatewayv2_api.http_api.id
   route_key = "ANY /"
-  target    = "integrations/${aws_apigatewayv2_integration.ecs_integration.id}"
+  target    = "integrations/${aws_apigatewayv2_integration.ecs_integration_root.id}"
 }
 
 # Output para exibir a URL final gerada pelo API Gateway

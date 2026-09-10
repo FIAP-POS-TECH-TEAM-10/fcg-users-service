@@ -198,9 +198,14 @@ resource "aws_ecs_service" "main" {
   desired_count   = 1
   launch_type     = "EC2"
 
+  # hostPort 5001 fixo + 1 instância só: o ECS precisa PARAR a task antiga antes de
+  # subir a nova (senão as duas disputam a porta 5001 e o deploy trava IN_PROGRESS).
+  deployment_minimum_healthy_percent = 0
+  deployment_maximum_percent         = 100
+
   lifecycle {
     ignore_changes = [
       task_definition # Garante que o Terraform nao reverta as revisoes criadas pelo GitHub Actions
     ]
-  }  
+  }
 }

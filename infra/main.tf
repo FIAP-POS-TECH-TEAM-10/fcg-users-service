@@ -8,12 +8,12 @@ terraform {
     }
   }
 
-  # Backend remoto centralizado (S3 + DynamoDB)
+  # Backend remoto centralizado (S3 + DynamoDB) — criado por infra/bootstrap
   backend "s3" {
-    bucket         = "fiap-tech-challenge-tfstate-123456-915153720516-sa-east-1-an" # Substitua pelo seu Bucket S3
-    key            = "users-service/terraform.tfstate" # Key exclusiva deste microsserviço
-    region         = "sa-east-1"                          # Sua região AWS
-    dynamodb_table = "fiap-tech-challenge-tflocks"        # Nome da sua tabela DynamoDB
+    bucket         = "fcg-users-service-tfstate-704516098616-sa-east-1" # bootstrap: output tfstate_bucket
+    key            = "users-service/terraform.tfstate"                  # Key exclusiva deste microsserviço
+    region         = "sa-east-1"
+    dynamodb_table = "fcg-users-service-tflocks"                        # bootstrap: output tflock_table
     encrypt        = true
   }
 }
