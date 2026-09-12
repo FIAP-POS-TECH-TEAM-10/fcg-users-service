@@ -1,6 +1,7 @@
 using Fiap.FCGames.Users.CrossCutting.Extensions;
 using Fiap.FCGames.Users.CrossCutting.Middleware;
 using Fiap.FCGames.Users.Infra.DataProvider.Contexto;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Prometheus;
@@ -41,12 +42,22 @@ if (!app.Environment.IsEnvironment("Testing"))
 
 app.UseCorrelationId();
 
-if (app.Environment.IsDevelopment())
-{
-    app.RegisterSwagger();
-    app.MapOpenApi();
-    app.RegisterScalar();
-}
+app.RegisterSwagger();
+app.MapOpenApi();
+
+// if (app.Environment.IsDevelopment())
+// {
+//     //app.RegisterSwagger();
+//     ///app.MapOpenApi();
+//     //app.RegisterScalar();
+// }
+
+// Middleware para métricas HTTP (latência, status code, etc.)
+app.UseRouting();
+app.UseHttpMetrics();
+
+// Endpoint padrão /metrics
+app.MapMetrics();
 
 // Middleware para métricas HTTP (latência, status code, etc.)
 app.UseRouting();
@@ -67,7 +78,7 @@ app.MapHealthChecks("/health/live", new HealthCheckOptions
     Predicate = check => check.Tags.Contains("live")
 });
 
-Log.Information("FCGames UsersAPI iniciada em {Urls}", string.Join(", ", app.Urls.DefaultIfEmpty("http://localhost:5000")));
+Log.Information("FCGames UsersAPI iniciada em {Urls}", string.Join(", ", app.Urls.DefaultIfEmpty("http://localhost:5001")));
 
 app.Run();
 
