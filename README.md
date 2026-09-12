@@ -58,12 +58,19 @@ Microsserviço responsável pelo cadastro, autenticação e gestão de usuários
 | `JWT__KEY` | **Sim** | — | Chave secreta para assinar tokens JWT (mínimo 32 chars) |
 | `JWT__ISSUER` | Não | `AppFiapFcGames` | Emissor do token JWT |
 | `ConnectionStrings__DefaultConnection` | Não | `Data Source=fcgames.db` | Connection string do banco de dados |
-| `RabbitMQ__Host` | Não | `localhost` | Host do RabbitMQ |
+| `RabbitMQ__Host` | Não | `localhost` | Host do RabbitMQ (usado se `Messaging__Provider` não for `Sqs`) |
 | `RabbitMQ__Username` | Não | `guest` | Usuário do RabbitMQ |
 | `RabbitMQ__Password` | Não | `guest` | Senha do RabbitMQ |
+| `Messaging__Provider` | Não | — | `Sqs` usa Amazon SQS/SNS (deploy AWS). Vazio + `RabbitMQ__Host` setado → RabbitMQ. Nenhum dos dois → in-memory (satisfaz DI, `Publish` vira no-op) |
+| `AWS__Region` | Não | `sa-east-1` | Região usada pelo transporte SQS/SNS quando `Messaging__Provider=Sqs` |
 | `NUGET_AUTH_TOKEN` | Build only | — | PAT GitHub com `read:packages` para restaurar `FCGames.IntegrationEvents` |
 
 > **Segurança:** `JWT__KEY` nunca deve estar em `appsettings.json`. Configure sempre via variável de ambiente ou secrets.
+
+> **Mensageria:** o transporte é escolhido em runtime (`MassTransitExtensions.AddMassTransitMessaging`) — o
+> código de aplicação (`IPublishEndpoint`, consumers) não muda entre RabbitMQ e SQS. No ECS/AWS, o SDK usa a
+> **Task Role** da task definition (`fcg-users-service-ecs-task-role`) para autenticar no SQS/SNS — nenhuma
+> credencial no código ou em variável de ambiente.
 
 ## Executando localmente
 
