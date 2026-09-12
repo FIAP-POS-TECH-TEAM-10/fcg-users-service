@@ -198,6 +198,10 @@ resource "aws_ecs_service" "main" {
   desired_count   = 1
   launch_type     = "EC2"
 
+  # Permite que a capacidade caia para 0 durante o deploy para liberar a porta fixa
+  deployment_minimum_healthy_percent = 0
+  deployment_maximum_percent         = 100  
+
   lifecycle {
     ignore_changes = [
       task_definition # Garante que o Terraform nao reverta as revisoes criadas pelo GitHub Actions
