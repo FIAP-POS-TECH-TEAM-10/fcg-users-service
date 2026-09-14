@@ -1,14 +1,23 @@
 name: Infrastructure and App Deploy (Main)
 
+# Dispara SÓ quando código realmente chega na main (merge de PR ou push direto).
+# Antes também disparava em pull_request (opened/synchronize/reopened) — isso rodava
+# `terraform apply` + build + deploy em TODA atualização de PR aberto contra a main,
+# antes do merge. Além de gastar build à toa em código ainda não aprovado, quando o PR
+# finalmente mergeava esse gatilho e o `push` dessa mesma linha do código disparavam
+# JUNTOS — dois `terraform apply` concorrentes na mesma infra, causando instâncias EC2
+# órfãs no cluster ECS (viram órfãs porque o Auto Scaling Group só permite 1 e a segunda
+# apply detecta drift e tenta corrigir por cima da primeira).
 on:
-
-  pull_request:
-    branches:
-      - main
-    types: [opened, synchronize, reopened]
   push:
     branches:
       - main
+
+# Enfileira em vez de rodar em paralelo: se dois pushes em main chegarem perto um do
+# outro, o segundo run espera o primeiro terminar (nunca cancela um apply no meio).
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
 
 permissions:
   id-token: write # Necessário para autenticação via OIDC na AWS
@@ -25,7 +34,7 @@ env:
   WORKING_DIR: ./infra
 
 jobs:
-  # --- ETAPA 1: INFRAESTRUTURA & ECR (APENAS SE O PR FOR MERGED OU PUSH DIRETO) ---
+  # --- ETAPA 1: INFRAESTRUTURA & ECR ---
   infra-and-build:
     name: Provision Infrastructure & Push to ECR    
     runs-on: ubuntu-latest
