@@ -5,16 +5,19 @@ resource "aws_apigatewayv2_api" "http_api" {
   description   = "API Gateway para o serviço de Catalogo FCGames"
 }
 
-# Captura o IP público da EC2 que a ASG realmente controla — NÃO dá pra confiar em
-# "qualquer instância com a tag X e estado running": quando a ASG substitui uma instância
-# (novo AMI, unhealthy, ou intervenção manual), a antiga às vezes fica de pé por alguns
-# minutos antes do EC2 terminar de verdade — e nesse intervalo as DUAS batem no mesmo
-# filtro de tag+"running", e o provider pode escolher a errada (a que não tem a task do
-# ECS rodando). Isso já causou o Gateway apontar pra instância errada (503 mesmo com tudo
-# saudável) mais de uma vez, inclusive logo após um redeploy limpo. `aws_autoscaling_group`
-# não expõe a lista de instâncias/lifecycle_state (só metadados agregados), então a forma
-# confiável de desempatar é: entre as instâncias candidatas, a que a ASG controla é sempre
-# a mais recentemente lançada (qualquer órfã é sobra de um ciclo anterior).
+# Captura o IP público da EC2 do ECS. Escopado por tag Name + tag de ASG
+# (aws:autoscaling:groupName) pra pegar só a instância desta ASG. A ambiguidade que
+# motivava uma lógica mais complexa aqui (desempatar por launch_time entre instâncias
+# "candidatas") era causada por VÁRIOS serviços compartilhando o mesmo cluster ECS —
+# corrigido separadamente dando um cluster dedicado a cada serviço (ver
+# infra/variables.tf, cluster_name). Com cluster dedicado, só a própria ASG registra
+# instâncias com essa tag, então "qualquer" candidata já é a certa.
+#
+# NÃO usar `for_each` sobre `data.aws_instances...ids` aqui: numa apply "cold start"
+# (cluster e ASG sendo criados na mesma apply, como logo após trocar cluster_name) essa
+# lista só é conhecida DEPOIS do apply, e o Terraform exige que as chaves de um for_each
+# sejam conhecidas ANTES — dá erro "Invalid for_each argument". Ler direto o índice [0]
+# de um data source não tem essa restrição (fica "known after apply" normalmente).
 data "aws_instances" "ecs_host_candidates" {
   instance_tags = {
     Name = "${var.service_name}-ecs-host"
@@ -28,16 +31,8 @@ data "aws_instances" "ecs_host_candidates" {
   depends_on           = [aws_autoscaling_group.ecs_asg]
 }
 
-data "aws_instance" "ecs_host_detail" {
-  for_each    = toset(data.aws_instances.ecs_host_candidates.ids)
-  instance_id = each.value
-}
-
 locals {
-  # launch_time é ISO 8601 ("2026-09-14T23:14:06Z") — ordenação lexicográfica de string
-  # já corresponde à ordem cronológica. Pega o public_ip da instância com o maior launch_time.
-  ecs_host_by_launch_time = { for i in data.aws_instance.ecs_host_detail : i.launch_time => i.public_ip }
-  ecs_host_ip             = local.ecs_host_by_launch_time[sort(keys(local.ecs_host_by_launch_time))[length(local.ecs_host_by_launch_time) - 1]]
+  ecs_host_ip = data.aws_instances.ecs_host_candidates.public_ips[0]
 }
 
 # 2. Integração do API Gateway com o IP público da EC2 do ECS.
