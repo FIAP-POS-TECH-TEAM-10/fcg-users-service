@@ -59,13 +59,6 @@ app.UseHttpMetrics();
 // Endpoint padrão /metrics
 app.MapMetrics();
 
-// Middleware para métricas HTTP (latência, status code, etc.)
-app.UseRouting();
-app.UseHttpMetrics();
-
-// Endpoint padrão /metrics
-app.MapMetrics();
-
 app.UseErrorHandlingMiddleware();
 app.UseHttpsRedirection();
 app.UseAuthentication();
