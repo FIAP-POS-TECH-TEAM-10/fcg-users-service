@@ -134,3 +134,19 @@ Fiap.FCGames.Users.Domain       <- Entidades, Interfaces, Excecoes
 Fiap.FCGames.Users.Infra        <- EF Core, Repositories, Services
 Fiap.FCGames.Users.CrossCutting <- Extensions, Middleware
 ```
+
+## Pipeline (CI/CD)
+
+`.github/workflows/ci-cd.yml` (GitHub Actions):
+
+| Gatilho | Jobs |
+|---|---|
+| Pull request → `main` | Build & testes → imagem Docker + **Trivy** (CRITICAL/HIGH, só reporta) |
+| Push na `main` / botão "Run workflow" na `main` | o mesmo + **push no ECR** (`:<sha7>` e `:latest`) + **deploy no EKS** |
+
+- **Deploy:** `kubectl set image deploy/users-api api=<ECR>:<sha7>` + `kubectl rollout status` — rolling update sem downtime (readiness gate do ALB, ver `fcg-orchestration/k8s/eks`).
+- **Cluster desligado** (o `fcg-eks` só fica ligado nas sessões): o deploy é pulado com aviso e o run fica verde; a imagem `:latest` entra no próximo `./scripts/eks-up.sh`.
+- **Trivy:** tabela no resumo do run e alertas na aba **Security → Code scanning**.
+- **Testes:** `dotnet test` roda quando existir um projeto `*Tests.csproj`; hoje o pipeline emite um aviso (pendência).
+- **Autenticação:** OIDC com a role `GitHubActions-ECS-Deploy-Role` (sem chave AWS no GitHub). Secret necessário: `PAT_PACKAGES` (`read:packages`, pacote `FCGames.IntegrationEvents`).
+- **Live deploy:** altere o código → PR → merge na `main` → acompanhe em *Actions* e no cluster com `kubectl get pods -n fcgames -w`.
