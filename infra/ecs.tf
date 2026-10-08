@@ -1,6 +1,7 @@
 # ------------------------------------------------------------------------------
 # 1. REDE PADRÃO E SECURITY GROUP
 # ------------------------------------------------------------------------------
+
 data "aws_vpc" "default" {
   default = true
 }
@@ -18,7 +19,7 @@ resource "aws_security_group" "ecs_sg" {
   description = "Permite trafego de entrada para o container ECS"
   vpc_id      = data.aws_vpc.default.id
 
-  # Libera portas dinâmicas alocadas pelo ECS no modo bridge (32768-61000)
+  # Portas dinamicas alocadas pelo ECS no modo bridge
   ingress {
     from_port   = 32768
     to_port     = 61000
@@ -26,6 +27,7 @@ resource "aws_security_group" "ecs_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # Porta da aplicação
   ingress {
     from_port   = var.app_port
     to_port     = var.app_port
@@ -33,6 +35,7 @@ resource "aws_security_group" "ecs_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # HTTP
   ingress {
     from_port   = 80
     to_port     = 80
@@ -49,35 +52,42 @@ resource "aws_security_group" "ecs_sg" {
 }
 
 # ------------------------------------------------------------------------------
-# 2. CLOUDWATCH LOGS & PERMISSÕES IAM DO ECS
+# 2. CLOUDWATCH LOGS
 # ------------------------------------------------------------------------------
 
-# Grupo de logs para capturar stdout/stderr das tasks do ECS
 resource "aws_cloudwatch_log_group" "ecs_logs" {
   name              = "/ecs/${var.service_name}"
   retention_in_days = 7
 }
+
+# ------------------------------------------------------------------------------
+# 3. IAM ROLE DA INSTANCIA EC2
+# ------------------------------------------------------------------------------
 
 resource "aws_iam_role" "ecs_instance_role" {
   name = "${var.service_name}-ecs-instance-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Action    = "sts:AssumeRole"
-      Effect    = "Allow"
-      Principal = { Service = "ec2.amazonaws.com" }
-    }]
+
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
   })
 }
 
-# Política padrão do ECS Agent
 resource "aws_iam_role_policy_attachment" "ecs_instance_role_policy" {
   role       = aws_iam_role.ecs_instance_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
 }
 
-# Permite que a instância EC2 crie e envie streams para o CloudWatch Logs
 resource "aws_iam_role_policy_attachment" "ecs_cloudwatch_policy" {
   role       = aws_iam_role.ecs_instance_role.name
   policy_arn = "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
@@ -89,61 +99,148 @@ resource "aws_iam_instance_profile" "ecs_instance_profile" {
 }
 
 # ------------------------------------------------------------------------------
-# 2b. TASK ROLE — usada pelo CONTAINER (não pela instância EC2) para falar com o
-#     Amazon SQS/SNS via MassTransit (Messaging:Provider=Sqs). No launch type EC2 o
-#     agente injeta AWS_CONTAINER_CREDENTIALS_RELATIVE_URI no container quando a task
-#     tem taskRoleArn, e o AWS SDK usa isso automaticamente (sem access key no código).
+# 4. ECS TASK EXECUTION ROLE
 # ------------------------------------------------------------------------------
+#
+# Essa role é usada pelo ECS Agent para obter recursos necessários para
+# iniciar a task, incluindo secrets do AWS Secrets Manager.
+#
+# A aplicação NÃO usa essa role para acessar SQS/SNS.
+# Para isso existe a ecs_task_role abaixo.
+# ------------------------------------------------------------------------------
+
+resource "aws_iam_role" "ecs_task_execution_role" {
+  name = "${var.service_name}-ecs-task-execution-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+# Política padrão de execução do ECS
+resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
+  role       = aws_iam_role.ecs_task_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+# Permissão específica para buscar os secrets do Secrets Manager
+resource "aws_iam_role_policy" "ecs_task_execution_secrets" {
+  name = "${var.service_name}-secrets-access"
+  role = aws_iam_role.ecs_task_execution_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+
+    Statement = [
+      {
+        Sid    = "ReadUsersSecrets"
+        Effect = "Allow"
+
+        Action = [
+          "secretsmanager:GetSecretValue"
+        ]
+
+        Resource = aws_secretsmanager_secret.users_credentials.arn
+      }
+    ]
+  })
+}
+
+# ------------------------------------------------------------------------------
+# 5. ECS TASK ROLE
+# ------------------------------------------------------------------------------
+#
+# Role usada pela aplicação dentro do container.
+#
+# Atualmente utilizada pelo MassTransit para SQS/SNS.
+# ------------------------------------------------------------------------------
+
 resource "aws_iam_role" "ecs_task_role" {
   name = "${var.service_name}-ecs-task-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Action    = "sts:AssumeRole"
-      Effect    = "Allow"
-      Principal = { Service = "ecs-tasks.amazonaws.com" }
-    }]
+
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+      }
+    ]
   })
 }
 
-# MassTransit auto-provisiona (cria) os tópicos SNS e filas SQS na primeira conexão —
-# por isso a policy cobre Create/Get/Set além de enviar/receber. Escopo: só recursos
-# SQS/SNS da própria conta+região (não IAM, não outros serviços).
 resource "aws_iam_role_policy" "ecs_task_sqs_sns" {
   name = "${var.service_name}-task-sqs-sns"
   role = aws_iam_role.ecs_task_role.id
 
   policy = jsonencode({
     Version = "2012-10-17"
+
     Statement = [
       {
         Sid    = "Sqs"
         Effect = "Allow"
+
         Action = [
-          "sqs:CreateQueue", "sqs:GetQueueUrl", "sqs:GetQueueAttributes", "sqs:SetQueueAttributes",
-          "sqs:TagQueue", "sqs:ListQueueTags", "sqs:SendMessage", "sqs:ReceiveMessage",
-          "sqs:DeleteMessage", "sqs:ChangeMessageVisibility", "sqs:PurgeQueue"
+          "sqs:CreateQueue",
+          "sqs:GetQueueUrl",
+          "sqs:GetQueueAttributes",
+          "sqs:SetQueueAttributes",
+          "sqs:TagQueue",
+          "sqs:ListQueueTags",
+          "sqs:SendMessage",
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:ChangeMessageVisibility",
+          "sqs:PurgeQueue"
         ]
+
         Resource = "arn:aws:sqs:${var.aws_region}:*:*"
       },
+
       {
         Sid    = "Sns"
         Effect = "Allow"
+
         Action = [
-          "sns:CreateTopic", "sns:GetTopicAttributes", "sns:SetTopicAttributes", "sns:TagResource",
-          "sns:Subscribe", "sns:Unsubscribe", "sns:ListSubscriptionsByTopic", "sns:Publish"
+          "sns:CreateTopic",
+          "sns:GetTopicAttributes",
+          "sns:SetTopicAttributes",
+          "sns:TagResource",
+          "sns:Subscribe",
+          "sns:Unsubscribe",
+          "sns:ListSubscriptionsByTopic",
+          "sns:Publish"
         ]
+
         Resource = "arn:aws:sns:${var.aws_region}:*:*"
       },
+
       {
-        # sqs:ListQueues e sns:ListTopics não aceitam restrição por ARN de recurso —
-        # a AWS exige Resource "*" para essas duas ações (mesmo escopadas só a elas).
-        # Sem isso o MassTransit falha (silenciosamente, só loga erro) ao publicar, porque
-        # ele chama ListTopics pra checar se o tópico já existe antes de tentar criar.
-        Sid      = "ListNoResourceLevelPerms"
-        Effect   = "Allow"
-        Action   = ["sqs:ListQueues", "sns:ListTopics"]
+        Sid    = "ListNoResourceLevelPerms"
+        Effect = "Allow"
+
+        Action = [
+          "sqs:ListQueues",
+          "sns:ListTopics"
+        ]
+
         Resource = "*"
       }
     ]
@@ -151,15 +248,17 @@ resource "aws_iam_role_policy" "ecs_task_sqs_sns" {
 }
 
 # ------------------------------------------------------------------------------
-# 3. CLUSTER ECS + LAUNCH TEMPLATE + AUTO SCALING GROUP
+# 6. ECS CLUSTER
 # ------------------------------------------------------------------------------
 
-# Cluster ECS
 resource "aws_ecs_cluster" "main" {
   name = var.cluster_name
 }
 
-# Busca dinamicamente a AMI ECS-Optimized para x86_64
+# ------------------------------------------------------------------------------
+# 7. ECS-OPTIMIZED AMI
+# ------------------------------------------------------------------------------
+
 data "aws_ami" "ecs_optimized" {
   most_recent = true
   owners      = ["amazon"]
@@ -170,7 +269,10 @@ data "aws_ami" "ecs_optimized" {
   }
 }
 
-# Template que inicializa a EC2 configurada para o Cluster
+# ------------------------------------------------------------------------------
+# 8. LAUNCH TEMPLATE
+# ------------------------------------------------------------------------------
+
 resource "aws_launch_template" "ecs_ec2_template" {
   name_prefix   = "${var.service_name}-template-"
   image_id      = data.aws_ami.ecs_optimized.id
@@ -187,18 +289,23 @@ resource "aws_launch_template" "ecs_ec2_template" {
 
   user_data = base64encode(<<-EOF
               #!/bin/bash
+
               echo "ECS_CLUSTER=${aws_ecs_cluster.main.name}" >> /etc/ecs/ecs.config
               EOF
   )
 }
 
-# Auto Scaling Group
+# ------------------------------------------------------------------------------
+# 9. AUTO SCALING GROUP
+# ------------------------------------------------------------------------------
+
 resource "aws_autoscaling_group" "ecs_asg" {
   name                = "${var.service_name}-asg"
   vpc_zone_identifier = data.aws_subnets.default.ids
-  min_size            = 1
-  max_size            = 1
-  desired_capacity    = 1
+
+  min_size         = 1
+  max_size         = 1
+  desired_capacity = 1
 
   launch_template {
     id      = aws_launch_template.ecs_ec2_template.id
@@ -212,22 +319,38 @@ resource "aws_autoscaling_group" "ecs_asg" {
   }
 }
 
-# Task Definition configurada com o driver 'awslogs'
+# ------------------------------------------------------------------------------
+# 10. ECS TASK DEFINITION
+# ------------------------------------------------------------------------------
+
 resource "aws_ecs_task_definition" "app" {
   family                   = "${var.service_name}-task"
   network_mode             = "bridge"
   requires_compatibilities = ["EC2"]
-  cpu                      = "256"
-  memory                   = "256"
-  task_role_arn            = aws_iam_role.ecs_task_role.arn
+
+  cpu    = "256"
+  memory = "256"
+
+  # Role utilizada pela aplicação para acessar AWS em runtime
+  task_role_arn = aws_iam_role.ecs_task_role.arn
+
+  # Role utilizada pelo ECS para iniciar a task e buscar secrets
+  execution_role_arn = aws_iam_role.ecs_task_execution_role.arn
 
   container_definitions = jsonencode([
     {
-      name      = "${var.service_name}-container"
-      image     = "${aws_ecr_repository.app_repo.repository_url}:latest"
+      name = "${var.service_name}-container"
+
+      image = "${aws_ecr_repository.app_repo.repository_url}:latest"
+
       cpu       = 256
       memory    = 256
       essential = true
+
+      # ------------------------------------------------------------------------
+      # PORTA
+      # ------------------------------------------------------------------------
+
       portMappings = [
         {
           containerPort = 5001
@@ -235,16 +358,100 @@ resource "aws_ecs_task_definition" "app" {
           protocol      = "tcp"
         }
       ]
-      # VARIÁVEIS DE AMBIENTE PARA DIAGNÓSTICO DO .NET NO LINUX
+
+      # ------------------------------------------------------------------------
+      # CONFIGURAÇÕES NÃO SENSÍVEIS
+      # ------------------------------------------------------------------------
+
       environment = [
-        { name = "ASPNETCORE_ENVIRONMENT", value = "Development" },      # Revela mais logs no startup
-        { name = "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT", value = "1" }, # Evita crash por falta de ICU/locales no Linux
-        { name = "DOTNET_USE_POLLING_FILE_WATCHER", value = "true" },
-        { name = "Messaging__Provider", value = "Sqs" }, # MassTransit usa Amazon SQS/SNS (ver MassTransitExtensions.cs)
-        { name = "AWS__Region", value = var.aws_region }
+        {
+          name  = "ASPNETCORE_ENVIRONMENT"
+          value = "Production"
+        },
+
+        {
+          name  = "ASPNETCORE_URLS"
+          value = "http://+:5001"
+        },
+
+        {
+          name  = "JWT__ISSUER"
+          value = "AppFiapFcGames"
+        },
+
+        {
+          name  = "RabbitMQ__Host"
+          value = "rabbitmq"
+        },
+
+        {
+          name  = "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT"
+          value = "1"
+        },
+
+        {
+          name  = "DOTNET_USE_POLLING_FILE_WATCHER"
+          value = "true"
+        },
+
+        {
+          name  = "Messaging__Provider"
+          value = "Sqs"
+        },
+
+        {
+          name  = "AWS__Region"
+          value = var.aws_region
+        }
       ]
+
+      # ------------------------------------------------------------------------
+      # SECRETS
+      # ------------------------------------------------------------------------
+      #
+      # Cada variável abaixo recebe uma propriedade específica do JSON
+      # armazenado no AWS Secrets Manager.
+      #
+      # Formato:
+      #
+      # ARN:chave-json::
+      #
+      # Os dois ":" finais indicam que estamos usando a versão AWSCURRENT.
+      # ------------------------------------------------------------------------
+
+      secrets = [
+        {
+          name = "JWT__KEY"
+
+          valueFrom = "${aws_secretsmanager_secret.users_credentials.arn}:JWT__KEY::"
+        },
+
+        {
+          name = "ConnectionStrings__DefaultConnection"
+
+          valueFrom = "${aws_secretsmanager_secret.users_credentials.arn}:ConnectionStrings__DefaultConnection::"
+        },
+
+        {
+          name = "RabbitMQ__Username"
+
+          valueFrom = "${aws_secretsmanager_secret.users_credentials.arn}:RabbitMQ__Username::"
+        },
+
+        {
+          name = "RabbitMQ__Password"
+
+          valueFrom = "${aws_secretsmanager_secret.users_credentials.arn}:RabbitMQ__Password::"
+        }
+      ]
+
+      # ------------------------------------------------------------------------
+      # CLOUDWATCH LOGS
+      # ------------------------------------------------------------------------
+
       logConfiguration = {
         logDriver = "awslogs"
+
         options = {
           "awslogs-group"         = aws_cloudwatch_log_group.ecs_logs.name
           "awslogs-region"        = var.aws_region
@@ -255,21 +462,27 @@ resource "aws_ecs_task_definition" "app" {
   ])
 }
 
-# Recurso para registrar e executar a Task no Cluster ECS
+# ------------------------------------------------------------------------------
+# 11. ECS SERVICE
+# ------------------------------------------------------------------------------
+
 resource "aws_ecs_service" "main" {
   name            = var.service_name
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.app.arn
-  desired_count   = 1
-  launch_type     = "EC2"
 
-  # Permite que a capacidade caia para 0 durante o deploy para liberar a porta fixa
+  desired_count = 1
+  launch_type   = "EC2"
+
+  # Permite que a task atual seja encerrada durante o deploy,
+  # liberando a porta fixa 5001.
   deployment_minimum_healthy_percent = 0
   deployment_maximum_percent         = 100
 
   lifecycle {
     ignore_changes = [
-      task_definition # Garante que o Terraform nao reverta as revisoes criadas pelo GitHub Actions
+      # O GitHub Actions pode registrar novas revisões da Task Definition.
+      task_definition
     ]
   }
 }
