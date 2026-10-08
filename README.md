@@ -142,7 +142,7 @@ Fiap.FCGames.Users.CrossCutting <- Extensions, Middleware
 | Gatilho | Jobs |
 |---|---|
 | Pull request → `main` | Build & testes → imagem Docker + **Trivy** (CRITICAL/HIGH, só reporta) |
-| Push na `main` / botão "Run workflow" | o mesmo + **push no ECR** (`:<sha7>` e `:latest`) + **deploy no EKS** |
+| Push na `main` / botão "Run workflow" na `main` | o mesmo + **push no ECR** (`:<sha7>` e `:latest`) + **deploy no EKS** |
 
 - **Deploy:** `kubectl set image deploy/users-api api=<ECR>:<sha7>` + `kubectl rollout status` — rolling update sem downtime (readiness gate do ALB, ver `fcg-orchestration/k8s/eks`).
 - **Cluster desligado** (o `fcg-eks` só fica ligado nas sessões): o deploy é pulado com aviso e o run fica verde; a imagem `:latest` entra no próximo `./scripts/eks-up.sh`.
