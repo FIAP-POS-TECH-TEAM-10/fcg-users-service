@@ -72,6 +72,7 @@ app.MapHealthChecks("/health/live", new HealthCheckOptions
 });
 
 Log.Information("FCGames UsersAPI iniciada em {Urls}", string.Join(", ", app.Urls.DefaultIfEmpty("http://localhost:5001")));
+Log.Information("UsersAPI pronta — imagem publicada pelo pipeline CI/CD (Fase 4)");
 
 app.Run();
 
