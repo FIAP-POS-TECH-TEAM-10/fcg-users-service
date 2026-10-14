@@ -21,3 +21,21 @@ terraform {
 provider "aws" {
   region = var.aws_region
 }
+
+# 1. Cria a definição do segredo no Secrets Manager
+resource "aws_secretsmanager_secret" "db_secret" {
+  name        = "prod/minha-app/db"
+  description = "Credenciais do banco de dados para a aplicacao fcg-users-service"
+  
+  # Força a exclusão imediata caso aplique um destroy (bom para ambientes de teste)
+  recovery_window_in_days = 0 
+}
+
+# 2. Insere os valores de Chave/Valor dentro do segredo (Formato JSON)
+resource "aws_secretsmanager_secret_version" "db_secret_val" {
+  secret_id     = aws_secretsmanager_secret.db_secret.id
+  secret_string = jsonencode({
+    DB_PASSWORD = "SuaSenhaSuperSeguraAqui"
+    DB_USER     = "admin"
+  })
+}
