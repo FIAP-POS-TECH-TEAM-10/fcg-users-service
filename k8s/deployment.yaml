@@ -28,7 +28,7 @@ spec:
             configMapKeyRef:
               name: users-api-config
               key: aspnetcore-urls
-        - name: ConnectionStrings__DefaultConnection
+        - name: DB_CONNECTION
           valueFrom:
             secretKeyRef:
               name: users-api-secret

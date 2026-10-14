@@ -9,7 +9,7 @@
         "ASPNETCORE_ENVIRONMENT": "Development",
         "JWT__KEY": "ChaveSegredoLocalDesenvolvimento1234567890Ab",
         "JWT__ISSUER": "AppFiapFcGames",
-        "ConnectionStrings__DefaultConnection": "Data Source=fcgames.db"
+        "DB_CONNECTION": "Data Source=fcgames.db"
       }
     }
   }

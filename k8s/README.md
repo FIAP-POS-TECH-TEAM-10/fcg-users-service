@@ -75,7 +75,7 @@ As variáveis são injetadas automaticamente do ConfigMap e Secret:
 
 ```yaml
 ASPNETCORE_URLS: http://+:5001
-ConnectionStrings__DefaultConnection: Data Source=/data/users.db
+DB_CONNECTION: Data Source=/data/users.db
 RabbitMQ__Host: rabbitmq
 RabbitMQ__Username: guest
 RabbitMQ__Password: guest

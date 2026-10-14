@@ -9,6 +9,12 @@ using Prometheus;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Configuration.AddAwsSecretsManager(config =>
+{
+    config.Region = "sa-east-1";
+    config.SecretFilter = entry => entry.Name == "prod/minha-app/db";
+});
+
 builder.Services.AddControllers();
 builder.Services.Configure<Microsoft.AspNetCore.Mvc.ApiBehaviorOptions>(options =>
     options.SuppressModelStateInvalidFilter = true);

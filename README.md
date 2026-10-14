@@ -57,7 +57,7 @@ Microsserviço responsável pelo cadastro, autenticação e gestão de usuários
 |----------|-------------|--------|-----------|
 | `JWT__KEY` | **Sim** | — | Chave secreta para assinar tokens JWT (mínimo 32 chars) |
 | `JWT__ISSUER` | Não | `AppFiapFcGames` | Emissor do token JWT |
-| `ConnectionStrings__DefaultConnection` | Não | `Data Source=fcgames.db` | Connection string do banco de dados |
+| `DB_CONNECTION` | Sim em produção | — | Connection string SQLite obtida da propriedade `DB_CONNECTION` do segredo `prod/minha-app/db` no AWS Secrets Manager. Em execução local, configure-a no ambiente |
 | `RabbitMQ__Host` | Não | `localhost` | Host do RabbitMQ (usado se `Messaging__Provider` não for `Sqs`) |
 | `RabbitMQ__Username` | Não | `guest` | Usuário do RabbitMQ |
 | `RabbitMQ__Password` | Não | `guest` | Senha do RabbitMQ |
@@ -66,6 +66,8 @@ Microsserviço responsável pelo cadastro, autenticação e gestão de usuários
 | `NUGET_AUTH_TOKEN` | Build only | — | PAT GitHub com `read:packages` para restaurar `FCGames.IntegrationEvents` |
 
 > **Segurança:** `JWT__KEY` nunca deve estar em `appsettings.json`. Configure sempre via variável de ambiente ou secrets.
+
+> **Banco de dados:** o segredo AWS deve conter o JSON `{"DB_CONNECTION":"..."}`. Ao provisionar por Terraform, informe o valor sensível pela variável `TF_VAR_db_connection`; não o grave em arquivos versionados.
 
 > **Mensageria:** o transporte é escolhido em runtime (`MassTransitExtensions.AddMassTransitMessaging`) — o
 > código de aplicação (`IPublishEndpoint`, consumers) não muda entre RabbitMQ e SQS. No ECS/AWS, o SDK usa a

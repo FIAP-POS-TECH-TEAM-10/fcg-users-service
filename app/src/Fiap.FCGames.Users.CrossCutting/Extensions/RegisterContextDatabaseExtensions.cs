@@ -9,7 +9,16 @@ public static class RegisterContextDatabaseExtensions
 {
     public static void AddContextDatabase(this IServiceCollection services, IConfiguration configuration)
     {
+        var connectionString = configuration["DB_CONNECTION"]
+            ?? configuration.GetConnectionString("DefaultConnection");
+
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException(
+                "A configuração DB_CONNECTION não foi definida no AWS Secrets Manager ou na configuração local.");
+        }
+
         services.AddDbContext<FcGamesContexto>(options =>
-            options.UseSqlite(configuration.GetConnectionString("DefaultConnection")));
+            options.UseSqlite(connectionString));
     }
 }
