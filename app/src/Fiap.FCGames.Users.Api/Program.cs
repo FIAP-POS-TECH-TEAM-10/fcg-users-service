@@ -1,19 +1,16 @@
 using Fiap.FCGames.Users.CrossCutting.Extensions;
 using Fiap.FCGames.Users.CrossCutting.Middleware;
-using Fiap.FCGames.Users.Infra.DataProvider.Contexto;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Prometheus;
+using Fiap.FCGames.Users.Infra.DataProvider.Contexto;
+using Fiap.FCGames.Users.CrossCutting.Services;
 
 
 var builder = WebApplication.CreateBuilder(args);
-
-builder.Configuration.AddAwsSecretsManager(config =>
-{
-    config.Region = "sa-east-1";
-    config.SecretFilter = entry => entry.Name == "prod/minha-app/db";
-});
+// Adiciona suporte a AWS Secrets Manager
+builder.Services.AddAwsSecretsManager(builder.Configuration);
 
 builder.Services.AddControllers();
 builder.Services.Configure<Microsoft.AspNetCore.Mvc.ApiBehaviorOptions>(options =>
@@ -44,6 +41,28 @@ if (!app.Environment.IsEnvironment("Testing"))
     var db = scope.ServiceProvider.GetRequiredService<FcGamesContexto>();
     db.Database.Migrate();
     await SeedAdminAsync(scope.ServiceProvider);
+}
+
+//TESTA A CONEXÃO COM O SECRETS MANAGER DA AWS
+try
+{
+    var secretsService =
+        app.Services.GetRequiredService<SecretsManagerService>();
+
+    var secret = await secretsService.GetSecretAsync();
+
+    if (string.IsNullOrWhiteSpace(secret))
+    {
+        throw new InvalidOperationException("O segredo está vazio.");
+    }
+
+    app.Logger.LogInformation(
+        "Sucesso! O segredo foi recuperado da AWS.");
+}
+catch (Exception ex)
+{
+    app.Logger.LogError(ex, "Falha ao acessar o segredo da AWS.");
+    throw;
 }
 
 app.UseCorrelationId();
