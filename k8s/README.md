@@ -46,6 +46,16 @@ kubectl logs -n fcgames -l app=users-api -f
 
 **IMPORTANTE**: Altere os valores dos Secrets em produção!
 
+O `secret.yaml` versionado é só um **modelo** (valores `REPLACE_ME`). Crie o Secret real com as suas credenciais:
+
+```bash
+kubectl create secret generic users-api-secret -n fcgames \
+  --from-literal=jwt-key="$JWT__KEY" \
+  --from-literal=db-connection="Data Source=/data/users.db" \
+  --from-literal=rabbitmq-username="$RABBITMQ__USERNAME" \
+  --from-literal=rabbitmq-password="$RABBITMQ__PASSWORD"
+```
+
 ## Acesso
 
 ### Port Forward para acesso local
@@ -77,8 +87,8 @@ As variáveis são injetadas automaticamente do ConfigMap e Secret:
 ASPNETCORE_URLS: http://+:5001
 ConnectionStrings__DefaultConnection: Data Source=/data/users.db
 RabbitMQ__Host: rabbitmq
-RabbitMQ__Username: guest
-RabbitMQ__Password: guest
+RabbitMQ__Username: <secret>
+RabbitMQ__Password: <secret>
 JWT__KEY: <secret>
 JWT__ISSUER: AppFiapFcGames
 ```

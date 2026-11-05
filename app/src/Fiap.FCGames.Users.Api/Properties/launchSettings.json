@@ -7,7 +7,6 @@
       "applicationUrl": "http://localhost:5001",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "JWT__KEY": "ChaveSegredoLocalDesenvolvimento1234567890Ab",
         "JWT__ISSUER": "AppFiapFcGames",
         "ConnectionStrings__DefaultConnection": "Data Source=fcgames.db"
       }
