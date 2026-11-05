@@ -59,8 +59,8 @@ Microsserviço responsável pelo cadastro, autenticação e gestão de usuários
 | `JWT__ISSUER` | Não | `AppFiapFcGames` | Emissor do token JWT |
 | `ConnectionStrings__DefaultConnection` | Não | `Data Source=fcgames.db` | Connection string do banco de dados |
 | `RabbitMQ__Host` | Não | `localhost` | Host do RabbitMQ (usado se `Messaging__Provider` não for `Sqs`) |
-| `RabbitMQ__Username` | Não | `guest` | Usuário do RabbitMQ |
-| `RabbitMQ__Password` | Não | `guest` | Senha do RabbitMQ |
+| `RabbitMQ__Username` | Não | defina no ambiente (sem padrão) | Usuário do RabbitMQ |
+| `RabbitMQ__Password` | Não | defina no ambiente (sem padrão) | Senha do RabbitMQ |
 | `Messaging__Provider` | Não | — | `Sqs` usa Amazon SQS/SNS (deploy AWS). Vazio + `RabbitMQ__Host` setado → RabbitMQ. Nenhum dos dois → in-memory (satisfaz DI, `Publish` vira no-op) |
 | `AWS__Region` | Não | `sa-east-1` | Região usada pelo transporte SQS/SNS quando `Messaging__Provider=Sqs` |
 | `NUGET_AUTH_TOKEN` | Build only | — | PAT GitHub com `read:packages` para restaurar `FCGames.IntegrationEvents` |
@@ -90,7 +90,10 @@ $env:NUGET_AUTH_TOKEN = "ghp_seu_token_aqui"  # PowerShell
 
 ```bash
 # Setar variáveis de ambiente necessárias
-export JWT__KEY="ChaveSegredoMinimo32Caracteres!!"
+export JWT__KEY="<chave com pelo menos 32 caracteres>"
+export ADMIN__PASSWORD="<senha do admin>"
+export RABBITMQ__USERNAME="<usuario do broker>"
+export RABBITMQ__PASSWORD="<senha do broker>"
 export ASPNETCORE_ENVIRONMENT=Development
 
 cd app/src
@@ -150,3 +153,5 @@ Fiap.FCGames.Users.CrossCutting <- Extensions, Middleware
 - **Testes:** `dotnet test` roda quando existir um projeto `*Tests.csproj`; hoje o pipeline emite um aviso (pendência).
 - **Autenticação:** OIDC com a role `GitHubActions-ECS-Deploy-Role` (sem chave AWS no GitHub). Secret necessário: `PAT_PACKAGES` (`read:packages`, pacote `FCGames.IntegrationEvents`).
 - **Live deploy:** altere o código → PR → merge na `main` → acompanhe em *Actions* e no cluster com `kubectl get pods -n fcgames -w`.
+
+> **Rodando fora do docker-compose:** exporte `JWT__KEY`, `RABBITMQ__USERNAME` e `RABBITMQ__PASSWORD` (não há valores padrão no código nem nos `appsettings`; o compose do `fcg-orchestration` os injeta a partir do `.env`).
