@@ -48,6 +48,11 @@ spec:
             secretKeyRef:
               name: users-api-secret
               key: rabbitmq-password
+        - name: ADMIN__PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: users-api-secret
+              key: admin-password
         - name: JWT__KEY
           valueFrom:
             secretKeyRef:
