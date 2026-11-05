@@ -104,12 +104,12 @@ A API ficará disponível em `http://localhost:5001`.
 
 ### Seed de dados
 
-Ao iniciar, a aplicação cria automaticamente um usuário Admin padrão se não existir:
+Ao iniciar, a aplicação cria automaticamente um usuário Admin se não existir. A senha **não** é versionada: defina a variável de ambiente `ADMIN__PASSWORD` (sem ela o app não sobe). No docker-compose e no EKS ela vem de `ADMIN_PASSWORD` (ver `fcg-orchestration`):
 
 | Campo | Valor |
 |-------|-------|
 | Email | `admin@fcgames.com` |
-| Senha | `Admin@123` |
+| Senha | valor de `ADMIN__PASSWORD` |
 
 ## Build com Docker
 

@@ -82,13 +82,16 @@ static async Task SeedAdminAsync(IServiceProvider services)
     var hasAdmin = await db.Usuarios.AnyAsync(u => u.IdTipoAcesso == 1);
     if (hasAdmin) return;
 
+    // Sem senha configurada o app não sobe (nada de semear admin com valor padrão).
+    var senhaAdmin = AdminSeedConfig.RequirePassword(services.GetRequiredService<IConfiguration>());
+
     var passwordHasher = services.GetRequiredService<Fiap.FCGames.Users.Domain.Services.IPasswordHasherService>();
     var admin = new Fiap.FCGames.Users.Domain.Aggregates.Usuario
     {
         Id = Fiap.FCGames.Users.Domain.Aggregates.UsuarioId.New(),
         Nome = "Administrador",
         Email = "admin@fcgames.com",
-        SenhaHash = passwordHasher.GerarHash("Admin@123"),
+        SenhaHash = passwordHasher.GerarHash(senhaAdmin),
         TipoAcesso = Fiap.FCGames.Users.Domain.Aggregates.TipoAcesso.Admin,
         CriadoEm = DateTime.UtcNow
     };
@@ -97,5 +100,5 @@ static async Task SeedAdminAsync(IServiceProvider services)
     await db.SaveChangesAsync();
 
     var logger = services.GetRequiredService<ILogger<Program>>();
-    logger.LogInformation("Seed: usuário Admin criado (admin@fcgames.com / Admin@123)");
+    logger.LogInformation("Seed: usuário Admin criado ({Email})", admin.Email);
 }
