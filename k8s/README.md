@@ -20,8 +20,10 @@ docker build -t fcg-users-api:latest .
 
 ### 2. Aplicar Manifestos
 
+> **Atenção:** crie o Secret (seção abaixo) **antes** de aplicar e não use `kubectl apply -f k8s/` na pasta inteira: isso aplicaria o `secret.yaml` modelo (valores `REPLACE_ME`) por cima do Secret real.
+
 ```bash
-kubectl apply -f k8s/
+kubectl apply -f k8s/configmap.yaml -f k8s/deployment.yaml -f k8s/pvc.yaml -f k8s/service.yaml
 ```
 
 ### 3. Verificar Status
@@ -43,6 +45,7 @@ kubectl logs -n fcgames -l app=users-api -f
 - `db-connection`: String de conexão do banco de dados
 - `rabbitmq-username`: Usuário do RabbitMQ
 - `rabbitmq-password`: Senha do RabbitMQ
+- `admin-password`: Senha do usuário `admin@fcgames.com` criado na primeira subida (sem ela o app não sobe)
 
 **IMPORTANTE**: Altere os valores dos Secrets em produção!
 
@@ -53,7 +56,8 @@ kubectl create secret generic users-api-secret -n fcgames \
   --from-literal=jwt-key="$JWT__KEY" \
   --from-literal=db-connection="Data Source=/data/users.db" \
   --from-literal=rabbitmq-username="$RABBITMQ__USERNAME" \
-  --from-literal=rabbitmq-password="$RABBITMQ__PASSWORD"
+  --from-literal=rabbitmq-password="$RABBITMQ__PASSWORD" \
+  --from-literal=admin-password="$ADMIN__PASSWORD"
 ```
 
 ## Acesso
