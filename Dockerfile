@@ -23,11 +23,10 @@ WORKDIR /app
 # RUN apt-get update && apt-get install -y --no-install-recommends curl \
 #     && rm -rf /var/lib/apt/lists/*
 
-# Instala bibliotecas nativas de internacionalizacao e suporte a timezone
+# curl: HEALTHCHECK do compose. ICU e tzdata ja vem na imagem aspnet (libicu74, tzdata);
+# nao instalar libicu-dev/icu-devtools: arrastam o linux-libc-dev, que gera centenas de alertas no Trivy.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
-    icu-devtools \
-    libicu-dev \
     && rm -rf /var/lib/apt/lists/*    
 
 EXPOSE 5001
