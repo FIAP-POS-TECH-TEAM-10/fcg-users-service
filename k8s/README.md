@@ -2,6 +2,13 @@
 
 Manifests só para cluster local. Na AWS o deploy usa `fcg-orchestration/k8s/eks`.
 
+0. Gere a imagem com a tag que o `deployment.yaml` espera (no Kind, carregue no cluster):
+
+```bash
+docker build --secret id=GITHUB_TOKEN,env=NUGET_AUTH_TOKEN -t fcg-users-api:latest .
+kind load docker-image fcg-users-api:latest    # só no Kind; o Docker Desktop já enxerga a imagem
+```
+
 1. Crie o Secret real (o `secret.yaml` daqui é só modelo, com `REPLACE_ME`):
 
 ```bash
