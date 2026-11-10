@@ -1,157 +1,63 @@
-# FCGames — UsersAPI
+# fcg-users-service (UsersAPI)
 
-Microsserviço responsável pelo cadastro, autenticação e gestão de usuários da plataforma FCGames.
-
-## Tecnologias
-
-- .NET 10 / ASP.NET Core
-- EF Core 10 + SQLite (dev) / PostgreSQL (prod)
-- MediatR 14 — CQRS
-- FluentValidation 12
-- MassTransit 8 + RabbitMQ
-- Serilog (logs JSON estruturados)
-- JWT Bearer
+Cadastro, login e gestão de usuários do FCGames. É o **único serviço que emite JWT**; os outros só
+validam o token. Ao cadastrar um usuário, publica `UsuarioCriadoEvento`.
 
 ## Endpoints
 
-| Método | Rota | Auth | Descrição |
-|--------|------|------|-----------|
-| `POST` | `/usuarios` | Público | Cadastra novo usuário |
-| `POST` | `/usuarios/login` | Público | Autentica e retorna JWT |
-| `GET` | `/usuarios` | Admin | Lista todos os usuários |
-| `GET` | `/usuarios/{id}` | Admin | Busca usuário por ID |
-| `PUT` | `/usuarios/{id}` | Admin | Atualiza usuário |
-| `GET` | `/health` | Público | Health check |
+| Endpoint | Acesso | O que faz |
+|---|---|---|
+| `POST /usuarios` | anônimo | cadastra usuário (publica `UsuarioCriadoEvento`) |
+| `POST /usuarios/login` | anônimo | devolve o JWT |
+| `GET /usuarios` | Admin | lista usuários |
+| `GET /usuarios/{id}` | Admin | busca por id |
+| `PUT /usuarios/{id}` | Admin | atualiza |
+| `GET /health` · `GET /health/live` | anônimo | health checks |
+| `GET /metrics` | anônimo | métricas Prometheus |
 
-### Exemplos de request
+Na primeira subida o app cria o admin `admin@fcgames.com` com a senha de `ADMIN__PASSWORD`.
+Contrato do evento: [`fcg-integration-events`](https://github.com/FIAP-POS-TECH-TEAM-10/fcg-integration-events).
 
-**POST /usuarios**
-```json
-{
-  "nome": "João Silva",
-  "email": "joao@example.com",
-  "senha": "MinhaS3nha!"
-}
-```
+## Variáveis de ambiente
 
-**POST /usuarios/login**
-```json
-{
-  "email": "joao@example.com",
-  "senha": "MinhaS3nha!"
-}
-```
+| Variável | Obrigatória | O que é |
+|---|---|---|
+| `JWT__KEY` | sim | chave de assinatura do JWT (mín. 32 caracteres) |
+| `JWT__ISSUER` | não (`AppFiapFcGames`) | emissor do token |
+| `ADMIN__PASSWORD` | sim | senha do admin criado no seed; sem ela o app não sobe |
+| `ConnectionStrings__DefaultConnection` | não (`Data Source=fcgames.db`) | SQLite |
+| `Messaging__Provider` | não | `Sqs` = SQS/SNS (AWS); vazio + `RabbitMQ__Host` = RabbitMQ; nenhum = em memória |
+| `AWS__Region` | não (`sa-east-1`) | região do SQS/SNS |
+| `RabbitMQ__Host` · `RabbitMQ__Username` · `RabbitMQ__Password` | com RabbitMQ | broker local |
 
-**Resposta de login:**
-```json
-{
-  "email": "joao@example.com",
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "expiracao": "2025-01-01T01:00:00Z"
-}
-```
+Nenhum segredo fica no repositório: localmente vêm do `.env` do
+[`fcg-orchestration`](https://github.com/FIAP-POS-TECH-TEAM-10/fcg-orchestration); no EKS, dos
+Secrets `fcg-jwt` e `fcg-admin`.
 
-## Variáveis de Ambiente
+## Rodar local
 
-| Variável | Obrigatória | Padrão | Descrição |
-|----------|-------------|--------|-----------|
-| `JWT__KEY` | **Sim** | — | Chave secreta para assinar tokens JWT (mínimo 32 chars) |
-| `JWT__ISSUER` | Não | `AppFiapFcGames` | Emissor do token JWT |
-| `ConnectionStrings__DefaultConnection` | Não | `Data Source=fcgames.db` | Connection string do banco de dados |
-| `RabbitMQ__Host` | Não | `localhost` | Host do RabbitMQ (usado se `Messaging__Provider` não for `Sqs`) |
-| `RabbitMQ__Username` | Não | defina no ambiente (sem padrão) | Usuário do RabbitMQ |
-| `RabbitMQ__Password` | Não | defina no ambiente (sem padrão) | Senha do RabbitMQ |
-| `Messaging__Provider` | Não | — | `Sqs` usa Amazon SQS/SNS (deploy AWS). Vazio + `RabbitMQ__Host` setado → RabbitMQ. Nenhum dos dois → in-memory (satisfaz DI, `Publish` vira no-op) |
-| `AWS__Region` | Não | `sa-east-1` | Região usada pelo transporte SQS/SNS quando `Messaging__Provider=Sqs` |
-| `NUGET_AUTH_TOKEN` | Build only | — | PAT GitHub com `read:packages` para restaurar `FCGames.IntegrationEvents` |
-
-> **Segurança:** `JWT__KEY` nunca deve estar em `appsettings.json`. Configure sempre via variável de ambiente ou secrets.
-
-> **Mensageria:** o transporte é escolhido em runtime (`MassTransitExtensions.AddMassTransitMessaging`) — o
-> código de aplicação (`IPublishEndpoint`, consumers) não muda entre RabbitMQ e SQS. No ECS/AWS, o SDK usa a
-> **Task Role** da task definition (`fcg-users-service-ecs-task-role`) para autenticar no SQS/SNS — nenhuma
-> credencial no código ou em variável de ambiente.
-
-## Executando localmente
-
-### Pré-requisitos
-
-- .NET 10 SDK
-- GitHub PAT com permissão `read:packages` (para o pacote `FCGames.IntegrationEvents`)
-
-### Configurar PAT do GitHub
+Jeito recomendado: `docker compose up` no `fcg-orchestration` (sobe tudo). Só este serviço:
 
 ```bash
-export NUGET_AUTH_TOKEN=ghp_seu_token_aqui   # Linux/Mac
-$env:NUGET_AUTH_TOKEN = "ghp_seu_token_aqui"  # PowerShell
+export NUGET_AUTH_TOKEN=$(gh auth token)   # pacote FCGames.IntegrationEvents (read:packages)
+export JWT__KEY="<32+ caracteres>" ADMIN__PASSWORD="<senha>" ASPNETCORE_ENVIRONMENT=Development
+dotnet run --project app/src/Fiap.FCGames.Users.Api      # http://localhost:5001 (Swagger em /swagger)
+dotnet test app/src/Fiap.FCGames.Users.slnx
 ```
 
-### Rodar a aplicação
+Imagem: `docker build --secret id=GITHUB_TOKEN,env=NUGET_AUTH_TOKEN -t fcg-users-service .`
 
-```bash
-# Setar variáveis de ambiente necessárias
-export JWT__KEY="<chave com pelo menos 32 caracteres>"
-export ADMIN__PASSWORD="<senha do admin>"
-export RABBITMQ__USERNAME="<usuario do broker>"
-export RABBITMQ__PASSWORD="<senha do broker>"
-export ASPNETCORE_ENVIRONMENT=Development
+## Na AWS
 
-cd app/src
-dotnet run --project Fiap.FCGames.Users.Api
-```
+- Pod `users-api` no cluster EKS `fcg-eks` (namespace `fcgames`), atrás do ALB em `/usuarios`.
+- Imagem no ECR `fcg-users-service`. Mensageria por SQS/SNS com a role `fcg-eks-users-api` (Pod Identity).
+- SQLite em disco efêmero: cada deploy zera os usuários e recria o admin.
+- Manifests e infra: `fcg-orchestration/k8s/eks` e `fcg-orchestration/infra/eks`.
 
-A API ficará disponível em `http://localhost:5001`.
+## CI/CD
 
-- Swagger UI: `http://localhost:5001/swagger`
-- Scalar UI: `http://localhost:5001/scalar/v1`
+`.github/workflows/ci-cd.yml`: PR → build, testes, imagem e Trivy. Merge na `main` → também push no
+ECR (`:<sha7>`, `:latest`) e rolling update no EKS; com o cluster desligado o deploy é pulado e a
+imagem entra no próximo "Ligar". Alertas do Trivy na aba **Security → Code scanning**.
 
-### Seed de dados
-
-Ao iniciar, a aplicação cria automaticamente um usuário Admin se não existir. A senha **não** é versionada: defina a variável de ambiente `ADMIN__PASSWORD` (sem ela o app não sobe). No docker-compose e no EKS ela vem de `ADMIN_PASSWORD` (ver `fcg-orchestration`):
-
-| Campo | Valor |
-|-------|-------|
-| Email | `admin@fcgames.com` |
-| Senha | valor de `ADMIN__PASSWORD` |
-
-## Build com Docker
-
-```bash
-docker build \
-  --build-arg NUGET_AUTH_TOKEN=$NUGET_AUTH_TOKEN \
-  -t fcgames-users-api:latest .
-```
-
-## Eventos publicados
-
-| Evento | Trigger | Consumidores |
-|--------|---------|--------------|
-| `UserCreatedEvent` | Após cadastro de usuário | CatalogAPI, NotificationsAPI |
-
-## Arquitetura
-
-```
-Fiap.FCGames.Users.Api          <- Controllers, Program.cs
-Fiap.FCGames.Users.Application  <- CQRS (Commands, Queries, Behaviors)
-Fiap.FCGames.Users.Domain       <- Entidades, Interfaces, Excecoes
-Fiap.FCGames.Users.Infra        <- EF Core, Repositories, Services
-Fiap.FCGames.Users.CrossCutting <- Extensions, Middleware
-```
-
-## Pipeline (CI/CD)
-
-`.github/workflows/ci-cd.yml` (GitHub Actions):
-
-| Gatilho | Jobs |
-|---|---|
-| Pull request → `main` | Build & testes → imagem Docker + **Trivy** (CRITICAL/HIGH, só reporta) |
-| Push na `main` / botão "Run workflow" na `main` | o mesmo + **push no ECR** (`:<sha7>` e `:latest`) + **deploy no EKS** |
-
-- **Deploy:** `kubectl set image deploy/users-api api=<ECR>:<sha7>` + `kubectl rollout status` — rolling update sem downtime (readiness gate do ALB, ver `fcg-orchestration/k8s/eks`).
-- **Cluster desligado** (o `fcg-eks` só fica ligado nas sessões): o deploy é pulado com aviso e o run fica verde; a imagem `:latest` entra no próximo `./scripts/eks-up.sh`.
-- **Trivy:** tabela no resumo do run e alertas na aba **Security → Code scanning**.
-- **Testes:** `dotnet test` roda quando existir um projeto `*Tests.csproj`; hoje o pipeline emite um aviso (pendência).
-- **Autenticação:** OIDC com a role `GitHubActions-ECS-Deploy-Role` (sem chave AWS no GitHub). Secret necessário: `PAT_PACKAGES` (`read:packages`, pacote `FCGames.IntegrationEvents`).
-- **Live deploy:** altere o código → PR → merge na `main` → acompanhe em *Actions* e no cluster com `kubectl get pods -n fcgames -w`.
-
-> **Rodando fora do docker-compose:** exporte `JWT__KEY`, `RABBITMQ__USERNAME` e `RABBITMQ__PASSWORD` (não há valores padrão no código nem nos `appsettings`; o compose do `fcg-orchestration` os injeta a partir do `.env`).
+Para Kind/Docker Desktop local, ver [`k8s/README.md`](k8s/README.md).
